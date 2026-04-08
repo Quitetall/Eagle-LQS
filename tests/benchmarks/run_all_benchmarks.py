@@ -25,7 +25,12 @@ def render_banner(title):
 
 def render_result(item, status="PASS"):
     pad = max(1, 65 - len(item))
-    color = "\033[92m" if status == "PASS" else "\033[91m"
+    colors = {
+        "PASS": "\033[92m",  # green
+        "FAIL": "\033[91m",  # red
+        "SKIP": "\033[93m",  # yellow
+    }
+    color = colors.get(status, "\033[91m")
     reset = "\033[0m"
     print(f"[*] {item}" + "." * pad + f"[{color}{status}{reset}]")
 
@@ -38,42 +43,50 @@ def main():
     # 1. MEMORY
     render_banner("AUDIT 1: TNN MEMORY FOOTPRINT")
     try:
-        used, budget = benchmark_tnn_memory.run()
-        render_result(f"TNN: {used} / {budget} bytes")
+        result = benchmark_tnn_memory.run()
+        if result is None:
+            render_result("TNN Memory (missing ckpt)", "SKIP")
+        else:
+            used, budget = result
+            render_result(f"TNN: {used} / {budget} bytes")
     except SystemExit:
         render_result("TNN Memory", "FAIL")
-        sys.exit(1)
     except Exception as e:
         print(f"\n[!!!] MEMORY BENCHMARK CRASHED: {e}")
-        sys.exit(1)
+        render_result("TNN Memory", "FAIL")
 
     time.sleep(0.3)
 
     # 2. BIOLOGICAL FIDELITY
     render_banner("AUDIT 2: BIOLOGICAL FIDELITY (Held-Out Patients)")
     try:
-        results, min_r = benchmark_biological_fidelity.run()
-        render_result(f"Min R = {min_r:.4f} (floor: 0.85)")
+        result = benchmark_biological_fidelity.run()
+        if result is None:
+            render_result("Biological Fidelity (missing ckpt or patient data)", "SKIP")
+        else:
+            _, min_r = result
+            render_result(f"Min R = {min_r:.4f} (floor: 0.85)")
     except SystemExit:
         render_result("Biological Fidelity", "FAIL")
-        sys.exit(1)
     except Exception as e:
         print(f"\n[!!!] FIDELITY BENCHMARK CRASHED: {e}")
-        sys.exit(1)
+        render_result("Biological Fidelity", "FAIL")
 
     time.sleep(0.3)
 
     # 3. C PARITY
     render_banner("AUDIT 3: C-SIMULATION BIT PARITY")
     try:
-        max_diff = benchmark_c_parity.run()
-        render_result(f"Max cascaded drift: {max_diff:.6f}")
+        result = benchmark_c_parity.run()
+        if result is None:
+            render_result("C Parity (missing ckpt or firmware header)", "SKIP")
+        else:
+            render_result(f"Max cascaded drift: {result:.6f}")
     except SystemExit:
         render_result("C Parity", "FAIL")
-        sys.exit(1)
     except Exception as e:
         print(f"\n[!!!] PARITY BENCHMARK CRASHED: {e}")
-        sys.exit(1)
+        render_result("C Parity", "FAIL")
 
     # 4. CLINICAL HARNESS (requires full dataset + teacher checkpoint)
     render_banner("AUDIT 4: CLINICAL STRESS PROFILES")
@@ -83,16 +96,19 @@ def main():
         import torch
         harness = ClinicalMasterHarness(use_gpu=torch.cuda.is_available(), stdout=False)
         harness.run_suite()
-        pass_count = sum(1 for r in harness.full_results if r['passed'])
-        total = len(harness.full_results)
-        if pass_count == total:
-            render_result(f"Clinical: {pass_count}/{total} profiles passed")
+        if harness.skipped:
+            render_result(f"Clinical Harness ({harness.skip_reason})", "SKIP")
         else:
-            render_result(f"Clinical: {pass_count}/{total} profiles passed", "FAIL")
+            pass_count = sum(1 for r in harness.full_results if r['passed'])
+            total = len(harness.full_results)
+            if pass_count == total:
+                render_result(f"Clinical: {pass_count}/{total} profiles passed")
+            else:
+                render_result(f"Clinical: {pass_count}/{total} profiles passed", "FAIL")
     except ImportError as e:
         print(f"[!] Clinical harness import failed: {e}")
         print(f"[!] Ensure clinical_master_harness.py is in: {os.path.dirname(__file__)}")
-        render_result("Clinical Harness (SKIPPED — import failed)", "SKIP")
+        render_result("Clinical Harness (import failed)", "SKIP")
     except Exception as e:
         print(f"[!] Clinical harness error: {e}")
         import traceback
@@ -103,14 +119,18 @@ def main():
     render_banner("AUDIT 5: DEPLOYMENT PATH (Ternary Encoder → FP32 Decoder)")
     try:
         import benchmark_deployment_path
-        results = benchmark_deployment_path.run()
-        deploy_rs = [r['deploy_r'] for r in results]
-        render_result(f"Deployment Min R = {min(deploy_rs):.4f} (floor: 0.85)")
+        result = benchmark_deployment_path.run()
+        if result is None:
+            render_result("Deployment Path (missing ckpt or patient data)", "SKIP")
+        else:
+            route_a_results, _ = result
+            deploy_rs = [r['r'] for r in route_a_results]
+            render_result(f"Deployment Min R = {min(deploy_rs):.4f} (floor: 0.85)")
     except SystemExit:
         render_result("Deployment Path", "FAIL")
     except ImportError as e:
         print(f"[!] Deployment benchmark import failed: {e}")
-        render_result("Deployment Path (SKIPPED)", "SKIP")
+        render_result("Deployment Path (import failed)", "SKIP")
     except Exception as e:
         print(f"[!] Deployment benchmark error: {e}")
         import traceback
@@ -121,22 +141,30 @@ def main():
     render_banner("AUDIT 6: COMPRESSION RATIO (FSQ + rANS)")
     try:
         import benchmark_compression_ratio
-        results_by_level = benchmark_compression_ratio.run()
-        # Find best operating point
-        for L in sorted(results_by_level.keys()):
-            res = results_by_level[L]
-            mcr = np.mean([r['compression_ratio'] for r in res])
-            mr = np.mean([r['latent_r'] for r in res])
-            if mr > 0.95:
-                render_result(f"Best: L={L}, CR={mcr:.1f}x, Latent R={mr:.4f}")
-                break
+        result = benchmark_compression_ratio.run()
+        if result is None:
+            render_result("Compression Ratio (missing ckpts or patient data)", "SKIP")
         else:
-            render_result("No level with Latent R > 0.95", "FAIL")
+            # benchmark_compression_ratio.run() returns (golden_results_by_level, lightning_results)
+            results_by_level = result[0] if isinstance(result, tuple) else result
+            best = None
+            for L in sorted(results_by_level.keys()):
+                res = results_by_level[L]
+                mcr = np.mean([r['cr'] for r in res])
+                mr = np.mean([r['r'] for r in res])
+                if mr > 0.95:
+                    best = (L, mcr, mr)
+                    break
+            if best:
+                L, mcr, mr = best
+                render_result(f"Best: L={L}, CR={mcr:.1f}x, R={mr:.4f}")
+            else:
+                render_result("No level with R > 0.95", "FAIL")
     except SystemExit:
         render_result("Compression Ratio", "FAIL")
     except ImportError as e:
         print(f"[!] Compression ratio import failed: {e}")
-        render_result("Compression Ratio (SKIPPED)", "SKIP")
+        render_result("Compression Ratio (import failed)", "SKIP")
     except Exception as e:
         print(f"[!] Compression ratio error: {e}")
         import traceback

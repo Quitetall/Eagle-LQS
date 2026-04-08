@@ -37,7 +37,13 @@ ROOT_DIR = find_project_root()
 sys.path.append(os.path.join(ROOT_DIR, 'ai_models', 'student'))
 sys.path.append(os.path.join(ROOT_DIR, 'ai_models', 'oracle'))
 from train_ternary import TernaryMobileNetV5
-from train_teacher import FP32OracleAutoEncoder
+try:
+    from train_teacher import FP32OracleAutoEncoder
+    HAS_TEACHER_MODULE = True
+except Exception as _e:
+    FP32OracleAutoEncoder = None
+    HAS_TEACHER_MODULE = False
+    print(f"[!] train_teacher not importable: {_e}")
 
 
 # =====================================================================
@@ -250,19 +256,19 @@ def run():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f"[*] Compression Ratio Benchmark on {device}")
 
-    student = TernaryMobileNetV5(in_ch=21, latent_dim=32).to(device).eval()
     s_path = os.path.join(ROOT_DIR, 'ai_models/student/student_hardened.ckpt')
-    if not os.path.exists(s_path):
-        print(f"[!] FATAL: {s_path} not found"); sys.exit(1)
-    student.load_state_dict(torch.load(s_path, map_location=device))
-
-    teacher = FP32OracleAutoEncoder().to(device).eval()
     t_enc = os.path.join(ROOT_DIR, 'ai_models/oracle/teacher_best.ckpt')
     t_dec = os.path.join(ROOT_DIR, 'ai_models/oracle/decoder_best.ckpt')
-    sd = {}
-    for k, v in torch.load(t_enc, map_location=device).items(): sd[f"encoder.{k}"] = v
-    for k, v in torch.load(t_dec, map_location=device).items(): sd[f"decoder.{k}"] = v
-    teacher.load_state_dict(sd)
+
+    missing_ckpts = [p for p in (s_path, t_enc, t_dec) if not os.path.exists(p)]
+    if missing_ckpts or not HAS_TEACHER_MODULE:
+        print("[SKIP] Benchmark Compression Ratio requires trained checkpoints:")
+        for p in missing_ckpts:
+            print(f"         missing: {p}")
+        if not HAS_TEACHER_MODULE:
+            print("         missing: train_teacher module (import failed)")
+        print("[SKIP] Train student + teacher before running this benchmark.")
+        return None
 
     PATIENTS = [
         ('chb15', 'ai_models/dataset_sim/q31_events/chb15_01_q31.npz'),
@@ -272,6 +278,23 @@ def run():
         ('chb19', 'ai_models/dataset_sim/q31_events/chb19_01_q31.npz'),
         ('chb20', 'ai_models/dataset_sim/q31_events/chb20_01_q31.npz'),
     ]
+    missing_patients = [p for _, p in PATIENTS
+                        if not os.path.exists(os.path.join(ROOT_DIR, p))]
+    if missing_patients:
+        print(f"[SKIP] Missing patient files ({len(missing_patients)}):")
+        for p in missing_patients:
+            print(f"         {p}")
+        print("[SKIP] Benchmark Compression Ratio requires ai_models/dataset_sim/q31_events/*.npz.")
+        return None
+
+    student = TernaryMobileNetV5(in_ch=21, latent_dim=32).to(device).eval()
+    student.load_state_dict(torch.load(s_path, map_location=device))
+
+    teacher = FP32OracleAutoEncoder().to(device).eval()
+    sd = {}
+    for k, v in torch.load(t_enc, map_location=device).items(): sd[f"encoder.{k}"] = v
+    for k, v in torch.load(t_dec, map_location=device).items(): sd[f"decoder.{k}"] = v
+    teacher.load_state_dict(sd)
 
     raw_bytes = 21 * 2500 * 2
     FSQ_LEVELS = [8, 16, 32]
@@ -291,8 +314,6 @@ def run():
         res = []
         for subj, rp in PATIENTS:
             path = os.path.join(ROOT_DIR, rp)
-            if not os.path.exists(path):
-                print(f"  [!] Missing: {path}"); sys.exit(1)
             sig = load_patient_slice(path)
             x = torch.from_numpy(sig).float().to(device)
             x = torch.clamp(x - x.mean(dim=2, keepdim=True), -50, 50)

@@ -57,11 +57,13 @@ def run():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     # Load student
-    student = TernaryMobileNetV5(in_ch=21, latent_dim=32).to(device).eval()
     s_path = os.path.join(ROOT_DIR, 'ai_models/student/student_hardened.ckpt')
     if not os.path.exists(s_path):
-        print(f"[!] FATAL: Checkpoint missing -> {s_path}")
-        sys.exit(1)
+        print(f"[SKIP] Student checkpoint not found: {s_path}")
+        print("[SKIP] Benchmark Biological Fidelity requires a trained student_hardened.ckpt.")
+        return None
+
+    student = TernaryMobileNetV5(in_ch=21, latent_dim=32).to(device).eval()
     student.load_state_dict(torch.load(s_path, map_location=device))
 
     # Held-out patients (not in training split)
@@ -74,14 +76,20 @@ def run():
         ('chb20', 'ai_models/dataset_sim/q31_events/chb20_01_q31.npz'),
     ]
 
+    missing = [p for _, p in PATIENTS
+               if not os.path.exists(os.path.join(ROOT_DIR, p))]
+    if missing:
+        print(f"[SKIP] Missing held-out patient files ({len(missing)}):")
+        for p in missing:
+            print(f"         {p}")
+        print("[SKIP] Benchmark Biological Fidelity requires ai_models/dataset_sim/q31_events/*.npz.")
+        return None
+
     R_FLOOR = 0.83  # Temporary: lowered from 0.85 to see full gauntlet. Target: 0.85+
     results = []
 
     for subject, rel_path in PATIENTS:
         path = os.path.join(ROOT_DIR, rel_path)
-        if not os.path.exists(path):
-            print(f"[!] Missing: {path}")
-            sys.exit(1)
 
         sig = load_genuine_clinical_slice(path)
         x = torch.from_numpy(sig).float().to(device)

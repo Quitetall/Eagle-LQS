@@ -34,7 +34,13 @@ sys.path.append(os.path.join(ROOT_DIR, 'ai_models', 'student'))
 sys.path.append(os.path.join(ROOT_DIR, 'ai_models', 'oracle'))
 
 from train_ternary import TernaryMobileNetV5
-from train_teacher import FP32OracleAutoEncoder
+try:
+    from train_teacher import FP32OracleAutoEncoder
+    HAS_TEACHER_MODULE = True
+except Exception as _e:
+    FP32OracleAutoEncoder = None
+    HAS_TEACHER_MODULE = False
+    print(f"[!] train_teacher not importable: {_e}")
 
 
 def compute_metrics(x, recon):
@@ -82,36 +88,11 @@ def run():
     print(f"[*] Deployment Path Benchmark on {device}")
 
     # Load student
-    student = TernaryMobileNetV5(in_ch=21, latent_dim=32).to(device).eval()
     s_path = os.path.join(ROOT_DIR, 'ai_models/student/student_hardened.ckpt')
     if not os.path.exists(s_path):
-        print(f"[!] FATAL: {s_path} not found")
-        sys.exit(1)
-    student.load_state_dict(torch.load(s_path, map_location=device))
-
-    # Load teacher (optional — Route B)
-    has_teacher = False
-    try:
-        teacher = FP32OracleAutoEncoder().to(device).eval()
-        t_enc = os.path.join(ROOT_DIR, 'ai_models/oracle/teacher_best.ckpt')
-        t_dec = os.path.join(ROOT_DIR, 'ai_models/oracle/decoder_best.ckpt')
-        if os.path.exists(t_enc) and os.path.exists(t_dec):
-            sd = {}
-            for k, v in torch.load(t_enc, map_location=device).items():
-                sd[f"encoder.{k}"] = v
-            for k, v in torch.load(t_dec, map_location=device).items():
-                sd[f"decoder.{k}"] = v
-            teacher.load_state_dict(sd)
-            has_teacher = True
-    except Exception as e:
-        print(f"[!] Teacher not loaded: {e}")
-
-    # Check encoder output shape
-    with torch.no_grad():
-        test = torch.randn(1, 21, 100).to(device)
-        lat = student.encode(test, quantize=True)
-        stride = test.shape[2] // lat.shape[2]
-        print(f"[*] Student encoder: {list(test.shape)} → {list(lat.shape)} (stride {stride}x)")
+        print(f"[SKIP] Student checkpoint not found: {s_path}")
+        print("[SKIP] Benchmark Deployment Path requires a trained student_hardened.ckpt.")
+        return None
 
     PATIENTS = [
         ('chb15', 'ai_models/dataset_sim/q31_events/chb15_01_q31.npz'),
@@ -121,6 +102,46 @@ def run():
         ('chb19', 'ai_models/dataset_sim/q31_events/chb19_01_q31.npz'),
         ('chb20', 'ai_models/dataset_sim/q31_events/chb20_01_q31.npz'),
     ]
+    missing = [p for _, p in PATIENTS
+               if not os.path.exists(os.path.join(ROOT_DIR, p))]
+    if missing:
+        print(f"[SKIP] Missing patient files ({len(missing)}):")
+        for p in missing:
+            print(f"         {p}")
+        print("[SKIP] Benchmark Deployment Path requires ai_models/dataset_sim/q31_events/*.npz.")
+        return None
+
+    student = TernaryMobileNetV5(in_ch=21, latent_dim=32).to(device).eval()
+    student.load_state_dict(torch.load(s_path, map_location=device))
+
+    # Load teacher (optional — Route B)
+    has_teacher = False
+    if HAS_TEACHER_MODULE:
+        try:
+            teacher = FP32OracleAutoEncoder().to(device).eval()
+            t_enc = os.path.join(ROOT_DIR, 'ai_models/oracle/teacher_best.ckpt')
+            t_dec = os.path.join(ROOT_DIR, 'ai_models/oracle/decoder_best.ckpt')
+            if os.path.exists(t_enc) and os.path.exists(t_dec):
+                sd = {}
+                for k, v in torch.load(t_enc, map_location=device).items():
+                    sd[f"encoder.{k}"] = v
+                for k, v in torch.load(t_dec, map_location=device).items():
+                    sd[f"decoder.{k}"] = v
+                teacher.load_state_dict(sd)
+                has_teacher = True
+            else:
+                print("[*] Teacher checkpoints not present — Route B will be skipped.")
+        except Exception as e:
+            print(f"[!] Teacher not loaded: {e}")
+    else:
+        print("[*] Teacher module unavailable — Route B will be skipped.")
+
+    # Check encoder output shape
+    with torch.no_grad():
+        test = torch.randn(1, 21, 100).to(device)
+        lat = student.encode(test, quantize=True)
+        stride = test.shape[2] // lat.shape[2]
+        print(f"[*] Student encoder: {list(test.shape)} → {list(lat.shape)} (stride {stride}x)")
 
     # ======================== ROUTE A: Student Decoder ========================
     print(f"\n{'='*70}")
@@ -132,10 +153,6 @@ def run():
     route_a_results = []
     for subject, rel_path in PATIENTS:
         path = os.path.join(ROOT_DIR, rel_path)
-        if not os.path.exists(path):
-            print(f"[!] Missing: {path}")
-            sys.exit(1)
-
         sig = load_patient_slice(path)
         x = torch.from_numpy(sig).float().to(device)
         x_ac = x - torch.mean(x, dim=2, keepdim=True)

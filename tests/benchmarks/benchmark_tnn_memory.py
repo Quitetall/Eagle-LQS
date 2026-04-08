@@ -70,8 +70,9 @@ def run():
     model = TernaryMobileNetV5(in_ch=21, latent_dim=32)
     ckpt_path = os.path.join(ROOT_DIR, 'ai_models/student/student_hardened.ckpt')
     if not os.path.exists(ckpt_path):
-        print(f"[!] FATAL: Checkpoint missing -> {ckpt_path}")
-        sys.exit(1)
+        print(f"[SKIP] Student checkpoint not found: {ckpt_path}")
+        print("[SKIP] Benchmark TNN Memory requires a trained student_hardened.ckpt.")
+        return None
 
     model.load_state_dict(torch.load(ckpt_path, map_location='cpu'))
 

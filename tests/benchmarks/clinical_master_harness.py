@@ -112,23 +112,40 @@ STRESS_PROFILES = {
 }
 
 
+class ClinicalHarnessSkipped(Exception):
+    """Raised when required assets (checkpoints, datasets) are missing."""
+
+
 class ClinicalMasterHarness:
     def __init__(self, use_gpu=True, stdout=False):
         self.device = torch.device('cuda' if use_gpu and torch.cuda.is_available() else 'cpu')
         self.stdout_mode = stdout
         self.full_results = []
+        self.skipped = False
+        self.skip_reason = None
 
         if not self.stdout_mode:
             print(f"[*] Initializing Clinical Harness on {BOLD}{self.device}{RESET}")
         self._init_models()
 
     def _init_models(self):
+        # Check required artifacts up-front — skip gracefully if missing.
+        s_path = os.path.join(ROOT_DIR, "ai_models/student/student_hardened.ckpt")
+        if not os.path.exists(s_path):
+            self.skipped = True
+            self.skip_reason = f"student_hardened.ckpt not found at {s_path}"
+            print(f"{YELLOW}[SKIP] {self.skip_reason}{RESET}")
+            print(f"{YELLOW}[SKIP] Clinical harness requires a trained student checkpoint.{RESET}")
+            return
+
         # FIX 1: correct class name
         try:
             self.student = TernaryMobileNetV5(in_ch=21, latent_dim=32).to(self.device).eval()
         except NameError:
-            print(f"{RED}[!] TernaryMobileNetV5 not found. Check train_ternary.py path.{RESET}")
-            sys.exit(1)
+            self.skipped = True
+            self.skip_reason = "TernaryMobileNetV5 not importable"
+            print(f"{YELLOW}[SKIP] {self.skip_reason}{RESET}")
+            return
 
         # Load teacher for oracle parity reference (not used in reconstruction path)
         try:
@@ -141,23 +158,20 @@ class ClinicalMasterHarness:
             if os.path.exists(d_path):
                 self.teacher.decoder.load_state_dict(
                     torch.load(d_path, map_location=self.device), strict=True)
-            self.has_teacher = True
+            self.has_teacher = os.path.exists(t_path) and os.path.exists(d_path)
+            if not self.has_teacher and not self.stdout_mode:
+                print(f"{YELLOW}[!] Teacher checkpoints not present — oracle parity will be skipped.{RESET}")
         except Exception as e:
             print(f"{YELLOW}[!] Teacher not loaded (oracle parity will be skipped): {e}{RESET}")
             self.has_teacher = False
 
         # Load student weights
-        s_path = os.path.join(ROOT_DIR, "ai_models/student/student_hardened.ckpt")
-        if os.path.exists(s_path):
-            state_dict = torch.load(s_path, map_location=self.device)
-            clean_sd = {k.replace("_orig_mod.", "").replace("module.", ""): v
-                        for k, v in state_dict.items()}
-            self.student.load_state_dict(clean_sd, strict=True)
-            if not self.stdout_mode:
-                print(f"[*] Loaded student weights (STRICT).")
-        else:
-            print(f"{RED}[!] student_hardened.ckpt not found{RESET}")
-            sys.exit(1)
+        state_dict = torch.load(s_path, map_location=self.device)
+        clean_sd = {k.replace("_orig_mod.", "").replace("module.", ""): v
+                    for k, v in state_dict.items()}
+        self.student.load_state_dict(clean_sd, strict=True)
+        if not self.stdout_mode:
+            print(f"[*] Loaded student weights (STRICT).")
 
     # ---------------------------------------------------------
     # METRICS
@@ -243,8 +257,8 @@ class ClinicalMasterHarness:
             os.path.join(ROOT_DIR, 'ai_models/dataset_sim/q31_events/*.npz')))
         patients = [f for f in patients if 'chb' in os.path.basename(f)]
         if not patients:
-            print("[!] FATAL: No q31 target files found.")
-            sys.exit(1)
+            raise ClinicalHarnessSkipped(
+                "No q31 target files found under ai_models/dataset_sim/q31_events/")
 
         target_file = patients[0]
 
@@ -395,11 +409,20 @@ class ClinicalMasterHarness:
         print(f"{BOLD}{WHITE}{'=' * 110}{RESET}\n")
 
     def run_suite(self):
+        if self.skipped:
+            print(f"{YELLOW}[SKIP] Clinical harness skipped: {self.skip_reason}{RESET}")
+            return
         if not self.stdout_mode:
             print(f"\n{BOLD}{CYAN}INITIATING CLINICAL VALIDATION...{RESET}")
 
-        for name in STRESS_PROFILES:
-            self.validate_profile(name)
+        try:
+            for name in STRESS_PROFILES:
+                self.validate_profile(name)
+        except ClinicalHarnessSkipped as e:
+            self.skipped = True
+            self.skip_reason = str(e)
+            print(f"{YELLOW}[SKIP] Clinical harness skipped: {e}{RESET}")
+            return
 
         self.render_dashboard()
 
