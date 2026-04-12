@@ -26,10 +26,10 @@ ROOT_DIR = find_project_root()
 sys.path.append(os.path.join(ROOT_DIR, 'ai_models', 'student'))
 from train_ternary import TernaryMobileNetV5_Subband
 
-# RP2350 SRAM4: 64KB total, 22KB workspace, 42KB for weights
-SRAM4_TOTAL = 64 * 1024
-WORKSPACE_RESERVE = 22 * 1024
-MODEL_BUDGET = SRAM4_TOTAL - WORKSPACE_RESERVE  # 43,008 bytes
+# RP2350: 64KB dedicated bank for TNN encoder.
+# Path B: metadata at INT16 (Q15) — workspace lives in separate SRAM bank.
+# Full 64KB available for encoder weights + metadata.
+MODEL_BUDGET = 64 * 1024  # 65,536 bytes
 
 # Encoder layer prefixes (everything that runs on-chip)
 ENCODER_PREFIXES = ('premix', 'focal1', 'focal2', 'focal3', 'dw_gate', 'bneck_v', 'bneck_g', 'rotation_A')
@@ -44,18 +44,24 @@ def estimate_bytes(param_name, tensor, ternary_modules):
     attr_name = parts[-1]
     is_ternary = module_name in ternary_modules
 
+    # Path B: metadata uses INT16 (Q15) to fit width=128 in 64KB.
+    # Ternary weights stay W2. GroupNorm weights stay INT8.
     if attr_name == 'weight' and is_ternary:
         return (tensor.numel() + 3) // 4, "W2 (2-bit packed)"
     elif attr_name == 'lsq_alpha':
-        return tensor.numel() * 4, "Q31 (4B/param)"
+        return tensor.numel() * 2, "Q15 (2B/param)"
     elif attr_name == 'weight' and not is_ternary:
         return tensor.numel() * 1, "INT8 (1B/param)"
     elif attr_name == 'bias':
-        return tensor.numel() * 4, "Q31 (4B/param)"
+        return tensor.numel() * 2, "Q15 (2B/param)"
+    elif 'norm' in module_name and 'weight' in attr_name:
+        return tensor.numel() * 1, "INT8 (1B/param)"
     elif 'norm' in module_name:
-        return tensor.numel() * 4, "Q31 (4B/param)"
+        return tensor.numel() * 2, "Q15 (2B/param)"
+    elif param_name == 'rotation_A':
+        return tensor.numel() * 2, "Q15 (rotation)"
     else:
-        return tensor.numel() * 4, "Q31 fallback"
+        return tensor.numel() * 2, "Q15 fallback"
 
 
 def is_encoder_param(name):
