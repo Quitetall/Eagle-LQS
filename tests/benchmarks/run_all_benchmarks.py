@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-LamQuant Gen 6 — Benchmark Gauntlet (FIXED)
-============================================
+LamQuant Gen 7.6.1 — Benchmark Gauntlet
+========================================
 Runs all 4 audits in sequence. Each must pass independently.
 """
 import sys
@@ -37,7 +37,7 @@ def render_result(item, status="PASS"):
 
 def main():
     print("\n" + "x" * 80)
-    print(" LAMQUANT GEN 6 : BENCHMARK GAUNTLET ".center(80))
+    print(" LAMQUANT GEN 7.6.1 : BENCHMARK GAUNTLET ".center(80))
     print("x" * 80)
 
     # 1. MEMORY
