@@ -1,0 +1,7 @@
+# C bench binaries (built from *.c via gcc one-shot)
+bench_kernels_c
+bench_kernels_c_o3
+bench_ternary_c
+
+# Rust bench build artifacts
+bench_rs/target/
