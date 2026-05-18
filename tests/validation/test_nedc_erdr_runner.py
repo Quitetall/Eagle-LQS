@@ -16,6 +16,8 @@ Running ERDR end-to-end is a manual integration test — see the class-level
 
 import os
 import sys
+from pathlib import Path
+
 import pytest
 import numpy as np
 
@@ -182,3 +184,107 @@ class TestDriverCommand:
         params_txt = cmd[3]
         assert os.path.exists(driver_py), f"missing driver: {driver_py}"
         assert os.path.exists(params_txt), f"missing params: {params_txt}"
+
+
+# ============================================================
+# Coverage supplement: summary, env_root, decode()
+# ============================================================
+
+class TestInstallationStatusSummary:
+    def test_summary_includes_status_and_root(self):
+        from ai_models.validation.nedc_erdr_runner import InstallationStatus
+        s = InstallationStatus(
+            root=Path("/x"), ok=True, missing=[], notes=[])
+        out = s.summary()
+        assert "/x" in out
+        assert "OK" in out
+
+    def test_summary_lists_missing(self):
+        from ai_models.validation.nedc_erdr_runner import InstallationStatus
+        s = InstallationStatus(
+            root=Path("/x"), ok=False,
+            missing=["bin/foo", "lib/bar"],
+            notes=["something"])
+        out = s.summary()
+        assert "INCOMPLETE" in out
+        assert "bin/foo" in out
+        assert "something" in out
+
+
+class TestEnvRootResolution:
+    def test_NEDC_NFC_env_used(self, monkeypatch, tmp_path):
+        from ai_models.validation.nedc_erdr_runner import NedcErdrRunner
+        monkeypatch.setenv("NEDC_NFC", str(tmp_path))
+        r = NedcErdrRunner()
+        assert r.root == tmp_path.resolve()
+
+    def test_explicit_root_overrides_env(self, monkeypatch, tmp_path):
+        from ai_models.validation.nedc_erdr_runner import NedcErdrRunner
+        monkeypatch.setenv("NEDC_NFC", "/some/env/path")
+        r = NedcErdrRunner(erdr_root=tmp_path)
+        assert r.root == tmp_path.resolve()
+
+
+class TestEmptyModelFile:
+    def test_empty_model_pckl_added_to_missing(self, tmp_path):
+        from ai_models.validation.nedc_erdr_runner import NedcErdrRunner
+        # Create all required files, but make model.pckl empty
+        for rel in NedcErdrRunner.REQUIRED_FILES:
+            p = tmp_path / rel
+            p.parent.mkdir(parents=True, exist_ok=True)
+            if "model.pckl" in rel:
+                p.touch()  # 0 bytes
+            else:
+                p.write_text("x")
+        r = NedcErdrRunner(erdr_root=tmp_path)
+        status = r.check_installation()
+        assert any("present but empty" in m for m in status.missing)
+
+
+class TestDecode:
+    def test_missing_edf_raises(self, tmp_path):
+        from ai_models.validation.nedc_erdr_runner import NedcErdrRunner
+        r = NedcErdrRunner(erdr_root=tmp_path)
+        with pytest.raises(FileNotFoundError):
+            r.decode("/nonexistent.edf")
+
+    def test_decode_with_mocked_subprocess(self, tmp_path, monkeypatch):
+        from unittest.mock import MagicMock, patch
+        import ai_models.validation.nedc_erdr_runner as mod
+        # Create dummy EDF
+        edf = tmp_path / "x.edf"
+        edf.write_text("not a real EDF")
+        # Mock subprocess.run
+        mock_proc = MagicMock(returncode=0, stdout="ok", stderr="")
+        with patch.object(mod.subprocess, "run", return_value=mock_proc):
+            r = mod.NedcErdrRunner(erdr_root=tmp_path)
+            out = r.decode(str(edf), output_dir=str(tmp_path / "out"),
+                            basename="test")
+        assert out.returncode == 0
+        assert out.edf_path == str(edf.resolve())
+
+    def test_decode_returns_events_when_csvbi_written(self, tmp_path, monkeypatch):
+        from unittest.mock import MagicMock, patch
+        import ai_models.validation.nedc_erdr_runner as mod
+
+        edf = tmp_path / "x.edf"
+        edf.write_text("not a real EDF")
+        out_dir = tmp_path / "out"
+        out_dir.mkdir()
+
+        # Pre-create csv_bi file as if subprocess wrote it
+        csvbi = out_dir / "test.csv_bi"
+        csvbi.write_text(
+            "# version = 1.0\n"
+            "channel,start_time,stop_time,label,confidence\n"
+            "TERM,0.0,10.0,bckg,1.0\n"
+            "TERM,10.0,20.0,seiz,0.95\n"
+        )
+
+        mock_proc = MagicMock(returncode=0, stdout="", stderr="")
+        with patch.object(mod.subprocess, "run", return_value=mock_proc):
+            r = mod.NedcErdrRunner(erdr_root=tmp_path)
+            out = r.decode(str(edf), output_dir=str(out_dir),
+                            basename="test")
+        assert len(out.events) == 2
+        assert out.csvbi_path is not None
