@@ -88,16 +88,16 @@ def encode_one(edf: Path, scratch: Path) -> int:
 
 
 def _worker(args: tuple) -> tuple:
-    """Pool worker: returns (key, in_sz, out_sz, ok, err)."""
+    """Pool worker: returns (key, name, in_sz, out_sz, ok, err)."""
     edf, tree, mode, scratch_str = args
     scratch = Path(scratch_str)
     key = group_key(edf, tree, mode)
     try:
         in_sz = edf.stat().st_size
         out_sz = encode_one(edf, scratch)
-        return (key, in_sz, out_sz, True, None)
+        return (key, edf.name, in_sz, out_sz, True, None)
     except subprocess.CalledProcessError as e:
-        return (key, 0, 0, False, str(e))
+        return (key, edf.name, 0, 0, False, str(e))
 
 
 def main() -> int:
@@ -111,7 +111,7 @@ def main() -> int:
     ap.add_argument("--limit", type=int, default=0,
                     help="Stop after N files (smoke test).")
     ap.add_argument("--jobs", type=int,
-                    default=max(1, os.cpu_count() - 1),
+                    default=max(1, (os.cpu_count() or 1) - 1),
                     help="Parallel workers (default = cpu_count-1).")
     args = ap.parse_args()
 
@@ -139,7 +139,7 @@ def main() -> int:
             for edf in edfs
         ]
         with mp.Pool(processes=args.jobs) as pool:
-            for i, (key, in_sz, out_sz, ok, err) in enumerate(
+            for i, (key, name, in_sz, out_sz, ok, err) in enumerate(
                 pool.imap_unordered(_worker, worker_args, chunksize=8)
             ):
                 if ok:
@@ -149,7 +149,8 @@ def main() -> int:
                     bucket["output_bytes"] += out_sz
                 else:
                     failures += 1
-                    print(f"[bench_tueg] FAIL: {err}", file=sys.stderr)
+                    print(f"[bench_tueg] FAIL {name}: {err}",
+                          file=sys.stderr)
                 if (i + 1) % 500 == 0:
                     el = time.time() - t0
                     rate = (i + 1) / el if el > 0 else 0
