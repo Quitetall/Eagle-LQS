@@ -1,0 +1,34 @@
+[package]
+name = "hazard3_bench"
+version = "0.0.0"
+edition = "2021"
+publish = false
+description = "LamQuant encoder cycle bench for Hazard3 (RP2350 RISC-V) — Verilator + Renode sims."
+
+# Standalone bench crate — not part of the main workspace. Kept out so it
+# doesn't perturb `cargo build --workspace` / CI / the firmware lockfile.
+[workspace]
+
+[[bin]]
+name = "bench_encode"
+path = "src/bench_encode.rs"
+test = false
+doctest = false
+bench = false
+
+[dependencies]
+lamquant-firmware = { path = "../../lamquant-firmware", default-features = false }
+embedded-alloc = "0.6"
+
+[target.riscv32imac-unknown-none-elf.dependencies]
+riscv = { version = "0.12", features = ["critical-section-single-hart"] }
+riscv-rt = "0.12"
+panic-halt = "1.0"
+
+
+[profile.release]
+opt-level = "z"
+lto = "fat"
+codegen-units = 1
+debug = true
+overflow-checks = false
