@@ -5,6 +5,12 @@
  * to riscv-rt. We carve a small 4 KiB boot region for the
  * trampoline so .text can be laid out normally from 0x80001000.
  */
+/* BOOT is 4 KiB to give the trampoline a clean 4 KiB-aligned end so
+ * .text starts at 0x80001000 — keeps the vector table (which Hazard3
+ * configurations require to be aligned to its size rounded up to a
+ * power of 2) clear of subsequent text. Only ~68 bytes of BOOT are
+ * actually populated; the rest is zero-padded by objcopy.
+ */
 MEMORY {
     BOOT : ORIGIN = 0x80000000, LENGTH = 4K
     RAM  : ORIGIN = 0x80001000, LENGTH = 4092K

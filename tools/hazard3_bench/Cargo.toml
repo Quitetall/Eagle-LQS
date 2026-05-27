@@ -30,5 +30,9 @@ panic-halt = "1.0"
 opt-level = "z"
 lto = "fat"
 codegen-units = 1
+# Keep debug info for addr2line on bench output when iterating on perf.
+# Matches the workspace firmware profile.
 debug = true
+# Explicit (overflow-checks default in release is already false) so the
+# tight encode loop doesn't trap on saturated Q31 arithmetic.
 overflow-checks = false

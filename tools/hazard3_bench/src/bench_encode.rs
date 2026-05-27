@@ -152,7 +152,9 @@ static mut PIPELINE: MaybeUninit<PipelineScheduler> = MaybeUninit::uninit();
 #[link_section = ".bss"]
 static mut SAFETY: MaybeUninit<SafetyState> = MaybeUninit::uninit();
 #[link_section = ".bss"]
-static mut SIGNAL: [[i32; WINDOW_SAMPLES]; NUM_CHANNELS] = [[0; WINDOW_SAMPLES]; NUM_CHANNELS];
+static mut SIGNAL_A: [[i32; WINDOW_SAMPLES]; NUM_CHANNELS] = [[0; WINDOW_SAMPLES]; NUM_CHANNELS];
+#[link_section = ".bss"]
+static mut SIGNAL_B: [[i32; WINDOW_SAMPLES]; NUM_CHANNELS] = [[0; WINDOW_SAMPLES]; NUM_CHANNELS];
 static ACTIVITY_MAP: [[u8; 79]; 8] = [[0; 79]; 8];
 
 const ITERS: u32 = 8;
@@ -171,14 +173,18 @@ fn main() -> ! {
     let safety: &mut SafetyState = unsafe { &mut *SAFETY.as_mut_ptr() };
     pipeline.set_codec_mode(CodecMode::Lossless);
 
-    let signal: &mut [[i32; WINDOW_SAMPLES]; NUM_CHANNELS] =
-        unsafe { &mut *addr_of_mut!(SIGNAL) };
-
-    // Seed the input — deterministic across runs so cycle counts are
-    // reproducible. Q31-scaled to ~20 effective bits (matches AFE
-    // dynamic range for benign EEG).
+    // Pre-fill two windows with deterministic xorshift noise BEFORE
+    // the timed bracket so the encoder sees varying input on each
+    // iteration (no warm-cache convergence on a single fixed input)
+    // without paying the per-iteration fill cost in the cycle count.
+    // Q31-scaled to ~20 effective bits (matches AFE dynamic range for
+    // benign EEG).
+    let signal_a: &mut [[i32; WINDOW_SAMPLES]; NUM_CHANNELS] =
+        unsafe { &mut *addr_of_mut!(SIGNAL_A) };
+    let signal_b: &mut [[i32; WINDOW_SAMPLES]; NUM_CHANNELS] =
+        unsafe { &mut *addr_of_mut!(SIGNAL_B) };
     let mut seed: u32 = 0xCAFE_BABE;
-    let mut fill = |sig: &mut [[i32; WINDOW_SAMPLES]; NUM_CHANNELS], s: &mut u32| {
+    let fill = |sig: &mut [[i32; WINDOW_SAMPLES]; NUM_CHANNELS], s: &mut u32| {
         for ch in 0..NUM_CHANNELS {
             for t in 0..WINDOW_SAMPLES {
                 let v = xorshift32(s) as i32;
@@ -186,6 +192,8 @@ fn main() -> ! {
             }
         }
     };
+    fill(signal_a, &mut seed);
+    fill(signal_b, &mut seed);
 
     tb_puts("=== LamQuant lossless encoder cycle bench ===\n");
     tb_puts("target=Hazard3 RV32IMACZba_Zbb_Zbkb_Zbs (RP2350 silicon config)\n");
@@ -194,19 +202,20 @@ fn main() -> ! {
     tb_put_u32(ITERS);
     tb_puts("\n");
 
-    // Warm-up (caches, allocator) — discounted from the timed region.
-    fill(signal, &mut seed);
-    let _ = pipeline.encode_window(signal, &ACTIVITY_MAP, 0, safety, 0);
+    // Warm-up — cache lines / allocator. NOT included in the timed
+    // region. Touches both buffers so both are L1-warm before bracket.
+    let _ = pipeline.encode_window(signal_a, &ACTIVITY_MAP, 0, safety, 0);
+    let _ = pipeline.encode_window(signal_b, &ACTIVITY_MAP, 0, safety, 0);
 
     let c0 = read_mcycle64();
     let i0 = read_minstret64();
     compiler_fence(Ordering::SeqCst);
 
-    for _ in 0..ITERS {
-        fill(signal, &mut seed);
-        let r = pipeline.encode_window(signal, &ACTIVITY_MAP, 0, safety, 0);
-        // Touch the result so LTO can't fold the call away.
-        unsafe { core::ptr::read_volatile(&r.bytes.as_ptr()) };
+    for i in 0..ITERS {
+        let sig = if i & 1 == 0 { &mut *signal_a } else { &mut *signal_b };
+        let r = pipeline.encode_window(sig, &ACTIVITY_MAP, 0, safety, 0);
+        // Defeat LTO so the encode_window call is not folded away.
+        core::hint::black_box(&r);
     }
 
     compiler_fence(Ordering::SeqCst);
