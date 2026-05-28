@@ -39,6 +39,7 @@
 
 pub mod adapter;
 pub mod bands;
+pub mod edf;
 pub mod harness;
 pub mod levels;
 pub mod metrics;

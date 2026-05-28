@@ -8,7 +8,7 @@
 //! Usage:
 //!
 //! ```text
-//! eagle-lqs [CODEC]
+//! eagle-lqs [CODEC] [FILE.edf]
 //! ```
 //!
 //! `CODEC` is one of:
@@ -16,13 +16,21 @@
 //!   - `gzip`     pure-Rust gzip (lossless)
 //!   - `quantize` a deliberately-lossy demo codec (÷8 then ×8)
 //!
-//! Real-EDF corpus loading is a TODO — for now the CLI always grades the
+//! If a second argument is given it is read as a real EDF recording
+//! (pure-Rust reader, digital sample domain) and graded in place of the
+//! built-in synthetic fixture. With no file argument the CLI grades the
 //! built-in fixture so it runs anywhere.
+//!
+//! Exit codes:
+//!   - `0` codec passes (at or above the alerting floor)
+//!   - `1` codec graded below the alerting floor
+//!   - `2` unknown codec name
+//!   - `3` EDF read failure (missing / malformed / truncated file)
 
 use std::process::ExitCode;
 
 use lqs::adapter::{serialize, Codec, Gzip, Store};
-use lqs::harness;
+use lqs::{edf, harness};
 
 /// A deliberately-lossy demo codec: quantize each sample by integer
 /// division by `STEP`, store the quantized values losslessly, and on
@@ -87,17 +95,42 @@ fn synthetic_signal(n_chan: usize, n: usize, fs: f64) -> Vec<Vec<i64>> {
 
 fn main() -> ExitCode {
     let codec_name = std::env::args().nth(1).unwrap_or_else(|| "store".to_string());
-
-    let fs = 256.0;
-    let signal = synthetic_signal(4, 512, fs);
+    let file_arg = std::env::args().nth(2);
 
     println!("LQS — vendor-neutral EEG codec benchmark standard");
-    println!(
-        "Fixture: {} channels x {} samples @ {} Hz (synthetic)\n",
-        signal.len(),
-        signal.first().map(|c| c.len()).unwrap_or(0),
-        fs,
-    );
+
+    // Choose the signal source: a real EDF file if given, else the
+    // built-in synthetic fixture. We resolve the source before the codec
+    // so an EDF read failure reports cleanly with its own exit code.
+    let (signal, fs): (Vec<Vec<i64>>, f64) = match file_arg.as_deref() {
+        Some(path) => match edf::read_edf(path) {
+            Ok(e) => {
+                println!(
+                    "Source: {} ({} channels @ {} Hz, {} samples/ch) [EDF]\n",
+                    path,
+                    e.channels.len(),
+                    e.fs,
+                    e.channels.first().map(|c| c.len()).unwrap_or(0),
+                );
+                (e.channels, e.fs)
+            }
+            Err(err) => {
+                eprintln!("error: failed to read EDF file '{path}': {err}");
+                return ExitCode::from(3);
+            }
+        },
+        None => {
+            let fs = 256.0;
+            let signal = synthetic_signal(4, 512, fs);
+            println!(
+                "Fixture: {} channels x {} samples @ {} Hz (synthetic)\n",
+                signal.len(),
+                signal.first().map(|c| c.len()).unwrap_or(0),
+                fs,
+            );
+            (signal, fs)
+        }
+    };
 
     let codec: Box<dyn Codec> = match codec_name.as_str() {
         "store" => Box::new(Store),
