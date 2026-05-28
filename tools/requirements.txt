@@ -1,0 +1,18 @@
+pytest
+numpy
+pyedflib
+mne
+
+# LamQuant lossless codec (Python reference implementation), pinned to the
+# public LamQuant-Lossless repo at the de-sibling revision.
+#
+# NOTE: The installable project (pyproject.toml, name="lamquant-codec",
+# setuptools backend) lives at the REPO ROOT, not under
+# reference_implementations/python_codec. Its [tool.setuptools.packages.find]
+# uses where=[".", "reference_implementations/python_codec"] to discover the
+# lamquant_codec package that physically sits under that subdir. Therefore the
+# pip git spec must target the repo root (no #subdirectory= fragment) — a spec
+# with #subdirectory=reference_implementations/python_codec fails because that
+# subdir has no pyproject.toml/setup.py of its own. Pure-Python wheel; no
+# maturin/rust needed (Rust accel is an optional [rust] extra).
+lamquant-codec @ git+https://github.com/Quitetall/LamQuant-Lossless.git@abcae4794c38b3d3e75d3c214063cf0307e3daba

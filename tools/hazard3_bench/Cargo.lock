@@ -229,10 +229,12 @@ dependencies = [
 [[package]]
 name = "lamquant-common"
 version = "0.1.0"
+source = "git+https://github.com/Quitetall/LamQuant-Lossless.git?rev=abcae4794c38b3d3e75d3c214063cf0307e3daba#abcae4794c38b3d3e75d3c214063cf0307e3daba"
 
 [[package]]
 name = "lamquant-firmware"
 version = "0.1.0"
+source = "git+https://github.com/Quitetall/LamQuant-Lossless.git?rev=abcae4794c38b3d3e75d3c214063cf0307e3daba#abcae4794c38b3d3e75d3c214063cf0307e3daba"
 dependencies = [
  "critical-section",
  "defmt 0.3.100",
@@ -254,6 +256,7 @@ dependencies = [
 [[package]]
 name = "lamquant-ipc-types"
 version = "0.1.0"
+source = "git+https://github.com/Quitetall/LamQuant-Lossless.git?rev=abcae4794c38b3d3e75d3c214063cf0307e3daba#abcae4794c38b3d3e75d3c214063cf0307e3daba"
 dependencies = [
  "heapless",
  "postcard",
@@ -263,6 +266,7 @@ dependencies = [
 [[package]]
 name = "lamquant-lossless"
 version = "7.7.0"
+source = "git+https://github.com/Quitetall/LamQuant-Lossless.git?rev=abcae4794c38b3d3e75d3c214063cf0307e3daba#abcae4794c38b3d3e75d3c214063cf0307e3daba"
 dependencies = [
  "base64 0.22.1",
  "lamquant-common",
@@ -273,6 +277,7 @@ dependencies = [
 [[package]]
 name = "lamquant-weights"
 version = "7.7.0"
+source = "git+https://github.com/Quitetall/LamQuant-Lossless.git?rev=abcae4794c38b3d3e75d3c214063cf0307e3daba#abcae4794c38b3d3e75d3c214063cf0307e3daba"
 
 [[package]]
 name = "libc"
