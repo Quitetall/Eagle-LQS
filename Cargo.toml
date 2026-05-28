@@ -1,0 +1,21 @@
+# Eagle — LamQuant validation + benchmarking suite
+#
+# This repository is intentionally NOT a single Cargo workspace.
+# tools/hazard3_bench/ and tools/bench/bench_rs/ each carry their own
+# self-contained workspace declaration because they target different
+# toolchains (riscv32imac for hazard3_bench, host for bench_rs).
+#
+# Build them explicitly:
+#   cd tools/hazard3_bench && cargo build --target riscv32imac-unknown-none-elf
+#   cd tools/bench/bench_rs && cargo build
+#
+# Both have a path = "../../../LamQuant-Lossless/lamquant-firmware" git/path
+# dep on the Lossless codec repo — see eagle/SETUP.md (to be added in
+# Phase 4 configure) for sibling-clone instructions.
+#
+# Python-side tools (tools/*.py + tools/*.sh) work standalone — they
+# install the lamquant-codec wheel from LamQuant-Lossless via pip and
+# read evidence JSON from a local `evidence/` directory (populated by
+# running the benches against a real EEG corpus).
+[workspace]
+members = []
