@@ -104,6 +104,10 @@ for _p in _DEFAULT_PATHS:
     if os.path.isdir(_p) and _p not in sys.path:
         sys.path.append(_p)
 
+# lamquant_codec.lqs is deprecated (Rust is canonical) but we import it
+# HERE precisely to freeze the parity golden — silence its import warning.
+os.environ.setdefault("LQS_SILENCE_DEPRECATION", "1")
+
 from ai_models.metrics import prd_numpy, pearson_r_numpy  # noqa: E402
 from lamquant_codec.lqs import (  # noqa: E402
     prd as lqs_prd,
