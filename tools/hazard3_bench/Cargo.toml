@@ -17,7 +17,7 @@ doctest = false
 bench = false
 
 [dependencies]
-lamquant-firmware = { path = "../../lamquant-firmware", default-features = false }
+lamquant-firmware = { path = "../../../LamQuant-Lossless/lamquant-firmware", default-features = false }
 embedded-alloc = "0.6"
 
 [target.riscv32imac-unknown-none-elf.dependencies]
