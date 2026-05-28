@@ -21,7 +21,7 @@ LamQuant validation + benchmarking suite. Reproduces every numerical claim in th
 
 ## Dependencies
 
-Eagle depends on **[LamQuant-Lossless](https://github.com/Quitetall/LamQuant-Lossless)** (the codec under test). It is a **standalone** clone — no sibling layout required. The Rust bench crates pull `lamquant-firmware` directly over a pinned git-rev, so Eagle resolves on its own.
+Eagle depends on **[LamQuant-Lossless](https://github.com/Quitetall/LamQuant-Lossless)** (the codec under test). It is a **standalone** clone; no sibling layout required. The Rust bench crates pull `lamquant-firmware` directly over a pinned git-rev, so Eagle resolves on its own.
 
 ```bash
 git clone git@github.com:Quitetall/Eagle.git
@@ -82,7 +82,7 @@ cargo test -p lqs            # external LQS Rust crate (see lqs/ section below)
 benchmarks that reach inside the neural codec internals (FSQ entropy/activity,
 latent utilization, Cayley rotation, residual-FSQ, subband leakage, TNN memory,
 XNOR/cpop MACs, C-vs-Python parity, ablation matrix). They are a dev dependency
-of LamQuant, **not** part of the external standard — they require the sibling
+of LamQuant, **not** part of the external standard; they require the sibling
 **LamQuant-Neural** source tree plus the **LamQuant-Lossless** wheel, stay in
 Python, and are gated behind the `internal` pytest marker so they are skipped
 by default. See [`tests/internal/README.md`](tests/internal/README.md).
