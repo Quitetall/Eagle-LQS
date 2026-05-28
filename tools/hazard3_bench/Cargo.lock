@@ -227,13 +227,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "lamquant-core"
-version = "7.7.0"
-dependencies = [
- "base64 0.22.1",
- "libm",
- "sha2",
-]
+name = "lamquant-common"
+version = "0.1.0"
 
 [[package]]
 name = "lamquant-firmware"
@@ -247,8 +242,8 @@ dependencies = [
  "embedded-hal-nb",
  "fugit",
  "heapless",
- "lamquant-core",
  "lamquant-ipc-types",
+ "lamquant-lossless",
  "lamquant-weights",
  "nb",
  "panic-halt",
@@ -263,6 +258,16 @@ dependencies = [
  "heapless",
  "postcard",
  "serde",
+]
+
+[[package]]
+name = "lamquant-lossless"
+version = "7.7.0"
+dependencies = [
+ "base64 0.22.1",
+ "lamquant-common",
+ "libm",
+ "sha2",
 ]
 
 [[package]]
