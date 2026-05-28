@@ -46,20 +46,43 @@ import tempfile
 import time
 from pathlib import Path
 
+import os
+import shutil
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
-LML_BIN = REPO_ROOT / "target" / "release" / "lml"
 OUT_DIR = REPO_ROOT / "outputs" / "paper"
 RNG_SEED = 0x4C414D51
+
+
+def _resolve_lml() -> Path:
+    """Resolve the `lml` binary. Post-decomposition lml lives in the
+    sibling LamQuant-Lossless repo, not Eagle. Order: $LML_BIN →
+    ../LamQuant-Lossless/target/{release,debug}/lml → PATH → Eagle-local.
+    """
+    env = os.environ.get("LML_BIN")
+    if env and Path(env).is_file():
+        return Path(env)
+    sib = REPO_ROOT.parent / "LamQuant-Lossless" / "target"
+    for prof in ("release", "debug"):
+        c = sib / prof / "lml"
+        if c.is_file():
+            return c
+    onpath = shutil.which("lml")
+    if onpath:
+        return Path(onpath)
+    return REPO_ROOT / "target" / "release" / "lml"
+
+
+LML_BIN = _resolve_lml()
 
 
 def ensure_lml() -> None:
     if LML_BIN.is_file():
         return
-    print("[per_file_cr] building lml binary…", file=sys.stderr)
-    subprocess.check_call(
-        ["cargo", "build", "--release", "--bin", "lml",
-         "--manifest-path", str(REPO_ROOT / "Cargo.toml")],
-        cwd=REPO_ROOT,
+    sys.exit(
+        "[per_file_cr] `lml` not found. Build it in the sibling "
+        "LamQuant-Lossless repo (cargo build --release --bin lml) or set "
+        "LML_BIN=/path/to/lml. lml is no longer in the Eagle workspace."
     )
 
 

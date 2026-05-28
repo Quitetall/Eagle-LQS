@@ -27,9 +27,24 @@ if sys.version_info < (3, 10):
 import tempfile
 import time
 from pathlib import Path
+import pathlib
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-LML_BIN = REPO_ROOT / "target" / "release" / "lml"
+import os as _os, shutil as _shutil
+def _resolve_lml_bin():
+    _env = _os.environ.get("LML_BIN")
+    if _env and pathlib.Path(_env).is_file():
+        return pathlib.Path(_env)
+    _sib = REPO_ROOT.parent / "LamQuant-Lossless" / "target"
+    for _p in ("release", "debug"):
+        _c = _sib / _p / "lml"
+        if _c.is_file():
+            return _c
+    _op = _shutil.which("lml")
+    if _op:
+        return pathlib.Path(_op)
+    return REPO_ROOT / "target" / "release" / "lml"
+LML_BIN = _resolve_lml_bin()
 CHBMIT_ROOT = Path("/mnt/4tb/data/Archive/edf/physionet/chbmit")
 OUT_DIR = REPO_ROOT / "outputs" / "paper"
 LPC_MODES = ("fixed", "adaptive", "anytime")
