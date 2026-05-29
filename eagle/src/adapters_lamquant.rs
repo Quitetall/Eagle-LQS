@@ -33,24 +33,27 @@
 //!
 //! ## Round-trip contract
 //!
-//! `lml` handles the EDF **digital** sample domain (signed 16-bit). The
-//! adapter blob is self-describing: `[b"LQS1"][u32 n_chan][per-channel
-//! u32 lengths][.lml bytes]`, so [`decode`] splits the flat int32 stream
-//! by exact per-channel counts.
+//! `lml` handles the EDF **digital** sample domain (signed 16-bit).
 //!
-//! **Uniform-rate signals** (all channels equal length) round-trip
-//! bit-exactly and grade LQS-L. **Mixed-rate / ragged signals** are
-//! written as a valid per-channel-rate EDF, but lml's bare-`.lml`
-//! (`--no-bundle --i-understand-data-loss`) decode rectangularizes
-//! unequal-length channels, so the shape header detects the mismatch and
-//! [`decode`] returns empty — the harness then reports below-floor
-//! (an honest failed-lossless verdict), never a false LQS-L. Lossless
-//! mixed-rate grading would require driving lml's full `.lma` path
-//! (tracked as a follow-up).
+//! - **encode**: write the in-memory channels as a per-channel-rate EDF
+//!   (`write_edf_bytes`, ragged-capable), then `lml encode` → the bare
+//!   `.lml` bytes (the blob). Mixed-rate channels are written as one data
+//!   record with per-channel `samples_per_record`.
+//! - **decode**: `lml decode --to-edf` reconstructs the EDF
+//!   **byte-identical** (header + all channels + trailing — the path
+//!   `lml roundtrip` verifies), then the shared [`lqs::edf`] reader
+//!   re-reads every channel at its native rate. This recovers ALL
+//!   channels, including slow mixed-rate aux channels — unlike the
+//!   raw-int32 decode, which emits only the dominant-rate EEG matrix and
+//!   silently drops aux.
 //!
-//! A signal with out-of-`i16` samples or an empty channel likewise yields
-//! an empty blob → below-floor, never a panic. EEG digital ADC samples
-//! are 16-bit by construction.
+//! So both uniform and **mixed-rate** signals round-trip bit-exactly and
+//! grade LQS-L (verified on real recordings, e.g. nedc example.edf:
+//! 27 EEG @250 Hz + 3 aux @1 Hz).
+//!
+//! A signal with out-of-`i16` samples or an empty channel yields an empty
+//! blob → harness shape-guard reports below-floor, never a panic. EEG
+//! digital ADC samples are 16-bit by construction.
 //!
 //! [`encode`]: Codec::encode
 //! [`decode`]: Codec::decode
@@ -344,53 +347,23 @@ impl LamQuantLossless {
         }
 
         // `lml` names the output after the input stem: in.edf -> in.lml.
+        // The bare `.lml` is the blob — it carries the container metadata
+        // `decode --to-edf` needs to reconstruct the EDF byte-exact.
         let lml_path = dir.join("in.lml");
-        let lml_bytes = std::fs::read(&lml_path).unwrap_or_default();
-        if lml_bytes.is_empty() {
-            return Vec::new();
-        }
-
-        // Prepend the self-describing shape header so decode can split the
-        // flat int32 stream by exact per-channel lengths (ragged-safe).
-        let mut blob = Vec::with_capacity(8 + signal.len() * 4 + lml_bytes.len());
-        blob.extend_from_slice(b"LQS1");
-        blob.extend_from_slice(&(signal.len() as u32).to_le_bytes());
-        for ch in signal {
-            blob.extend_from_slice(&(ch.len() as u32).to_le_bytes());
-        }
-        blob.extend_from_slice(&lml_bytes);
-        blob
-    }
-
-    /// Split `[b"LQS1"][u32 n_chan][n_chan × u32 lens]` off the front of a
-    /// blob, returning the per-channel lengths and the trailing `.lml`
-    /// bytes. `None` if the header is missing/short/malformed.
-    fn parse_shape_header(blob: &[u8]) -> Option<(Vec<usize>, &[u8])> {
-        if blob.len() < 8 || &blob[0..4] != b"LQS1" {
-            return None;
-        }
-        let n_chan = u32::from_le_bytes([blob[4], blob[5], blob[6], blob[7]]) as usize;
-        let lens_end = 8 + n_chan * 4;
-        if blob.len() < lens_end {
-            return None;
-        }
-        let mut lens = Vec::with_capacity(n_chan);
-        for i in 0..n_chan {
-            let o = 8 + i * 4;
-            lens.push(u32::from_le_bytes([blob[o], blob[o + 1], blob[o + 2], blob[o + 3]]) as usize);
-        }
-        Some((lens, &blob[lens_end..]))
+        std::fs::read(&lml_path).unwrap_or_default()
     }
 
     /// Decode production `.lml` bytes back to the per-channel signal, or
     /// `Vec::new()` on any failure (so the L-tier gate sees a mismatch).
+    ///
+    /// Reconstructs the full EDF via `lml decode --to-edf` (byte-identical,
+    /// ALL channels including mixed-rate aux — the path `lml roundtrip`
+    /// verifies), then re-reads it with the shared [`lqs::edf`] parser. The
+    /// raw-int32 decode is NOT used: it emits only the dominant-rate EEG
+    /// matrix and silently drops slow aux channels, which would make a
+    /// mixed-rate round trip non-bit-exact.
     fn try_decode(&self, blob: &[u8]) -> Vec<Vec<i64>> {
-        // Strip the self-describing shape header (written by try_encode).
-        let (lens, lml_bytes) = match Self::parse_shape_header(blob) {
-            Some(x) => x,
-            None => return Vec::new(),
-        };
-        if lml_bytes.is_empty() {
+        if blob.is_empty() {
             return Vec::new();
         }
         let dir = match ScratchDir::new("dec") {
@@ -398,16 +371,17 @@ impl LamQuantLossless {
             Err(_) => return Vec::new(),
         };
         let lml_path = dir.join("in.lml");
-        if std::fs::write(&lml_path, lml_bytes).is_err() {
+        if std::fs::write(&lml_path, blob).is_err() {
             return Vec::new();
         }
 
-        let raw_path = dir.join("out.raw");
+        let edf_path = dir.join("recon.edf");
         let dec = Command::new(&self.lml_bin)
             .arg("decode")
             .arg(&lml_path)
+            .arg("--to-edf")
             .arg("-o")
-            .arg(&raw_path)
+            .arg(&edf_path)
             .arg("-q")
             .output();
         match dec {
@@ -415,30 +389,13 @@ impl LamQuantLossless {
             _ => return Vec::new(),
         }
 
-        let raw = match std::fs::read(&raw_path) {
-            Ok(r) => r,
-            Err(_) => return Vec::new(),
-        };
-        // Stream is little-endian int32, channel-major; split by the exact
-        // per-channel lengths from the header (ragged-safe). The total must
-        // match the byte length or the decode is unfaithful.
-        let total: usize = lens.iter().sum();
-        if raw.len() != total * 4 {
-            return Vec::new();
+        // Re-read the byte-exact reconstructed EDF with the canonical LQS
+        // reader: this recovers every channel at its native rate, so a
+        // mixed-rate signal round-trips with all channels intact.
+        match lqs::edf::read_edf(&edf_path) {
+            Ok(sig) => sig.channels,
+            Err(_) => Vec::new(),
         }
-
-        let mut out = Vec::with_capacity(lens.len());
-        let mut pos = 0usize;
-        for &n in &lens {
-            let mut chan = Vec::with_capacity(n);
-            for _ in 0..n {
-                let b = [raw[pos], raw[pos + 1], raw[pos + 2], raw[pos + 3]];
-                chan.push(i32::from_le_bytes(b) as i64);
-                pos += 4;
-            }
-            out.push(chan);
-        }
-        out
     }
 }
 
@@ -534,26 +491,6 @@ mod tests {
         assert!(write_edf_bytes(&[vec![0, 1, -1, i16::MAX as i64]], 256.0).is_some());
     }
 
-    #[test]
-    fn shape_header_round_trips_ragged() {
-        // The self-describing header carries exact per-channel lengths so a
-        // mixed-rate (ragged) signal reconstructs without a uniform reshape.
-        let lml = b"\x00LML-payload-bytes";
-        let mut blob = Vec::new();
-        blob.extend_from_slice(b"LQS1");
-        blob.extend_from_slice(&3u32.to_le_bytes());
-        for &n in &[2u32, 4, 1] {
-            blob.extend_from_slice(&n.to_le_bytes());
-        }
-        blob.extend_from_slice(lml);
-        let (lens, payload) = LamQuantLossless::parse_shape_header(&blob).expect("valid header");
-        assert_eq!(lens, vec![2, 4, 1]);
-        assert_eq!(payload, lml);
-        // Malformed / short / wrong-magic headers -> None, never a panic.
-        assert!(LamQuantLossless::parse_shape_header(b"XXXX....").is_none());
-        assert!(LamQuantLossless::parse_shape_header(b"LQS1\x03\x00\x00\x00").is_none());
-        assert!(LamQuantLossless::parse_shape_header(b"").is_none());
-    }
 
     #[test]
     fn empty_blob_decodes_to_empty_signal() {
@@ -609,36 +546,31 @@ mod tests {
     }
 
     #[test]
-    fn mixed_rate_never_false_grades_l_when_available() {
-        // The guarantee under test: a ragged (mixed-rate) signal the
-        // adapter cannot losslessly round-trip must NEVER be graded LQS-L.
-        // lml's bare-`.lml` path (`--no-bundle --i-understand-data-loss`)
-        // rectangularizes channels of unequal length, so its decode does
-        // not reproduce ragged per-channel counts. The shape header makes
-        // decode detect that mismatch and return empty, and the harness
-        // shape-guard then reports below-floor — honest, not a false pass.
-        // (True lossless mixed-rate would require the adapter to use lml's
-        // full `.lma` path; tracked as a follow-up.)
+    fn mixed_rate_ragged_round_trips_bit_exact_when_available() {
+        // Mixed-rate (ragged) signal: ch0 has 8 samples, ch1 has 3 — the
+        // shape of a 250 Hz EEG channel beside a 1 Hz aux channel. The
+        // adapter encodes a per-channel-rate EDF, then decode reconstructs
+        // it byte-exact via `lml decode --to-edf` and re-reads ALL channels
+        // (no aux dropped). Round trip must be bit-exact → LQS-L.
         let codec = match LamQuantLossless::resolve(256.0) {
             Some(c) => c,
             None => {
-                eprintln!("SKIP mixed_rate_never_false_grades_l: no lml binary");
+                eprintln!("SKIP mixed_rate_ragged_round_trips: no lml binary");
                 return;
             }
         };
         let signal: Vec<Vec<i64>> = vec![vec![10, -20, 30, -40, 50, -60, 70, -80], vec![1, -2, 3]];
-        let report = harness::run(&codec, &signal, 256.0);
-        assert_ne!(
-            report.grade, 'L',
-            "ragged signal not losslessly round-tripped must never grade LQS-L"
-        );
-        assert!(!report.bit_exact, "must not claim bit-exact when it isn't");
+        let blob = codec.encode(&signal, 256.0);
+        assert!(!blob.is_empty(), "encode produced no .lml for ragged signal");
+        let back = codec.decode(&blob);
+        assert_eq!(back, signal, "ragged mixed-rate signal must round-trip bit-exact");
 
-        // A uniform-shape signal of the same channels still round-trips L.
-        let uni: Vec<Vec<i64>> = vec![vec![10, -20, 30, -40], vec![1, -2, 3, -4]];
-        let r2 = harness::run(&codec, &uni, 256.0);
-        if r2.bit_exact {
-            assert_eq!(r2.grade, 'L', "uniform bit-exact round trip grades L");
-        }
+        // The harness sees a bit-exact reconstruction of the full ragged
+        // channel set. (This tiny signal is header-dominated so its CR is
+        // below the L floor → grade isn't 'L'; the LQS-L-on-mixed-rate
+        // result is exercised on a real recording in the CLI / corpus run.)
+        let report = harness::run(&codec, &signal, 256.0);
+        assert!(report.bit_exact, "mixed-rate round trip must be bit-exact");
+        assert_eq!(report.prd, 0.0, "exact reconstruction → prd 0");
     }
 }
