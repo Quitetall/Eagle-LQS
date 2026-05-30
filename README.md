@@ -2,6 +2,8 @@
 
 LamQuant validation + benchmarking suite. Reproduces every numerical claim in the *IEEE Transactions on Biomedical Circuits and Systems* paper "LamQuant Lossless: A Real-Time, Bit-Exact, Wirelessly-Deployable EEG Compression Algorithm" (2026 submission).
 
+**API reference:** [API.md](API.md) (WIP — stabilizing post-refactor).
+
 ## What's in here
 
 | Subdir | Purpose |
