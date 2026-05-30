@@ -15,6 +15,8 @@ Eagle reproduces the LamQuant Lossless paper, archived at Zenodo: [`10.5281/zeno
 - RP2350 Hazard3 (RISC-V, Verilator-measured): 0.627 Msa/s, **119× real-time**, CPI 1.071
 - Bit-exact roundtrip verified on 88,147 encode/decode operations across 13 corpora and zero failures
 
+**API reference:** [API.md](API.md) (WIP — stabilizing post-refactor).
+
 ## What's in here
 
 | Subdir | Purpose |
