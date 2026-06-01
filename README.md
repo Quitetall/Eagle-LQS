@@ -1,6 +1,6 @@
 # Eagle
 
-LamQuant validation + benchmarking suite. Reproduces every numerical claim in the *IEEE Transactions on Biomedical Circuits and Systems* paper "LamQuant Lossless: A Real-Time, Bit-Exact, Wirelessly-Deployable EEG Compression Algorithm" (2026 submission).
+LamQuant validation + benchmarking suite. Reproduces every numerical claim in the *IEEE Transactions on Biomedical Engineering* paper "LamQuant Lossless: A Real-Time, Bit-Exact, Wirelessly-Deployable EEG Compression Algorithm" (2026 submission).
 
 ## What's in here
 
