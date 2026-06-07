@@ -1,6 +1,19 @@
 # Eagle
 
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+
 LamQuant validation + benchmarking suite. Reproduces every numerical claim in the *IEEE Journal of Biomedical and Health Informatics* paper "LamQuant Lossless: A Real-Time, Bit-Exact, Wirelessly-Deployable EEG Compression Algorithm" (2026 submission).
+
+**Cite:** [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20484969.svg)](https://doi.org/10.5281/zenodo.20484969)
+Eagle reproduces the LamQuant Lossless paper, archived at Zenodo: [`10.5281/zenodo.20484969`](https://doi.org/10.5281/zenodo.20484969).
+
+**API reference:** [API.md](API.md) (WIP — stabilizing post-refactor).
+
+**Headline numbers (this suite reproduces them; full evidence in `evidence/*.json`):**
+- TUEG v2.0.2 (1.76 TB, 70,831 EDF files): **2.287:1** compression ratio
+- CHB-MIT: **2.7229:1** (15.9% improvement over Chen et al.)
+- RP2350 Hazard3 (RISC-V, Verilator-measured): 0.627 Msa/s, **119× real-time**, CPI 1.071
+- Bit-exact roundtrip verified on 88,147 encode/decode operations across 13 corpora and zero failures
 
 ## What's in here
 
@@ -131,6 +144,14 @@ python3 tools/bench_moabb_concordance.py --source moabb \
 
 Eagle is one repo in an 8-product Unix decomposition of LamQuant. It depends on **LamQuant-Lossless** (codec library) and optionally on **LamQuant-Neural** (when the neural codec ships) via Cargo feature flags.
 
+| Public | Private (for now) |
+|---|---|
+| LamQuant-Lossless (codec under test) | LamQuant (monorepo source of truth) |
+| **Eagle** (this repo — validation) | LamQuant-Neural (SNN/TNN models) |
+| LamQuant-Firmware (planned formal split) | LamQuant-Codec (turnkey integration) |
+| BLUT (training orchestrator) | |
+| LamQuant-Vision (LSL + viz) | |
+
 ## Rust fast gate (eagle crate + sibling LQS)
 
 The vendor-neutral **LQS** standard is its own crate ([Quitetall/LQS](https://github.com/Quitetall/LQS),
@@ -158,3 +179,15 @@ is the fast local mirror of the CI `eagle-rust` job; run it standalone anytime.
 ## License
 
 GNU GENERAL PUBLIC LICENSE v3 (see `LICENSE.md`).
+
+## Cite
+
+```bibtex
+@article{lam2026lamquant,
+  title   = {LamQuant Lossless: A Real-Time, Bit-Exact, Wirelessly-Deployable EEG Compression Algorithm},
+  author  = {Lam, Brian},
+  journal = {IEEE Journal of Biomedical and Health Informatics},
+  year    = {2026},
+  note    = {Submitted}
+}
+```
