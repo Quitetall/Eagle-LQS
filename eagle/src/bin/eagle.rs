@@ -27,7 +27,7 @@ fn main() {
     let fs = 256.0;
 
     let (signal, fs) = match file.as_deref() {
-        Some(path) => match lqs::edf::read_edf(path) {
+        Some(path) => match open_eeg_codec_standard::edf::read_edf(path) {
             Ok(edf) => (edf.channels, edf.fs),
             Err(e) => {
                 eprintln!("eagle: failed to read EDF {path}: {e}");
@@ -49,7 +49,7 @@ fn main() {
         }
     };
 
-    let report = lqs::harness::run(&codec, &signal, fs);
+    let report = open_eeg_codec_standard::harness::run(&codec, &signal, fs);
     println!("{}", report.human_table());
     // Pass = graded into a deployable tier; below-floor → nonzero.
     std::process::exit(if "LCMA".contains(report.grade) { 0 } else { 1 });

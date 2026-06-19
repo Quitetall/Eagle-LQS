@@ -5,7 +5,7 @@
 //! L/C/M/A) and ships only neutral reference adapters. Eagle adds the
 //! LamQuant-specific pieces:
 //!
-//!   - [`adapters_lamquant`] — a [`lqs::adapter::Codec`] adapter that
+//!   - [`adapters_lamquant`] — a [`open_eeg_codec_standard::adapter::Codec`] adapter that
 //!     shells to the real `lml` lossless codec binary.
 //!   - (future) corpus runners over real EEG datasets, LamQuant report
 //!     rollups, and the `-m internal` neural-introspection suite.

@@ -20,4 +20,4 @@ path = "src/bin/eagle.rs"
 #   parent/
 #     LQS/      (github.com/Quitetall/LQS)
 #     Eagle/    (this repo)
-lqs = { path = "../../LQS" }
+open-eeg-codec-standard = "0.9"
