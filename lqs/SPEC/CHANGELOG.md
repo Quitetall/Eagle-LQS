@@ -4,6 +4,37 @@ All notable changes to the LQS standard are recorded here. The spec is versioned
 independently of the `lqs` crate. See [`LQS-v1.0.md`](LQS-v1.0.md) §11 for the
 version/stability policy.
 
+## 1.1 — 2026-06-19 (tooling / DX — no wire-format change)
+
+Additive developer-experience release. **The normative spec, tier thresholds,
+metric formulas, codec contract, and the `LqsSubmission` JSON wire format are
+unchanged from 1.0** — a 1.0 grader reads a 1.1 submission unchanged and vice
+versa, so `SPEC_VERSION` stays `"1.0"`. Everything here is read-out / tooling
+layered on top:
+
+### Added
+- **`eagle-lqs bench`** — grade the codec under test *and* built-in baselines
+  over one corpus, ranked, with a per-codec **95% bootstrap CI** on mean R and a
+  **paired sign-test** p-value versus the strongest baseline.
+- **Parallel, bounded-memory corpus grading** (`rayon`) with a live progress bar
+  — scales past RAM (only ~num-threads files resident); **median throughput** so
+  the MiB/s figure is citable.
+- **Colored terminal read-out**: unicode-boxed report, grade badges, per-band
+  sparkline; **ASCII charts** (`--charts`: braille R–D scatter, per-band bars).
+- **Self-contained HTML report** (`--report`): inline SVG charts (codec-CR bars,
+  R–D scatter) + comparison table + per-file detail, no JS / no external assets.
+- **Real `--help`** for every subcommand (clap); the legacy positional form is
+  preserved.
+- **`LQS-Bench-v1`** — the canonical, hash-pinned, publicly-downloadable
+  benchmark corpus (PhysioNet CHB-MIT subset) under `bench/LQS-Bench-v1/`, with a
+  fetch + lock recipe; the in-repo synthetic corpus is the offline
+  **LQS-Bench-mini** default.
+
+### Notes
+- Confidence intervals + significance are computed at render time from the
+  per-file reports; they are not stored in the submission (hence no schema bump).
+  `throughput_mibs` is now rounded to 0.001 MiB/s (stable + JSON-round-trip safe).
+
 ## 1.0 — 2026-06-18
 
 First frozen, versioned release of the standard.

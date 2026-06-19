@@ -401,13 +401,24 @@ the CLI prints the human-readable report table and a one-line
 `LQS-<grade> COMPLIANT` badge, and **exits non-zero if the codec is below the
 alerting floor**.
 
-> **Whole-codec, whole-corpus grading (LQS v1.0).** Beyond the legacy positional
-> form, `eagle-lqs` adds the `grade`, `verify-corpus`, and `emit-corpus-manifest`
-> subcommands. These grade a **manifest-defined external codec** (any language,
-> via the file-based CLI contract — `SPEC/LQS-v1.0.md` §6/§7) over a
-> **hash-pinned corpus** (`SPEC/LQS-v1.0.md` §8) and emit a results
-> **submission** JSON (`SPEC/LQS-v1.0.md` §9). See the spec for the contract and
-> [`corpora/README.md`](corpora/README.md) for corpus pinning.
+> **Whole-codec, whole-corpus grading.** Beyond the legacy positional form,
+> `eagle-lqs` adds (real `--help` on each) the `grade`, `bench`, `verify-corpus`,
+> and `emit-corpus-manifest` subcommands. They grade a **manifest-defined
+> external codec** (any language, via the file-based CLI contract —
+> `SPEC/LQS-v1.0.md` §6/§7) over a **hash-pinned corpus** (§8) and emit a results
+> **submission** JSON (§9). See [`corpora/README.md`](corpora/README.md) for
+> corpus pinning.
+>
+> **`bench` (the headline read-out).** `eagle-lqs bench --codec-manifest C.toml
+> --corpus-manifest K.toml --report out.html --charts` grades the codec under
+> test **and built-in baselines** in parallel (live progress bar), prints a
+> colored ranked table with a **95% bootstrap CI** on mean R and a **paired
+> sign-test** p-value vs the strongest baseline, draws ASCII charts, and writes a
+> self-contained **HTML report** (inline SVG charts + tables). The canonical,
+> hash-pinned, publicly-downloadable corpus is
+> [`bench/LQS-Bench-v1/`](bench/LQS-Bench-v1/README.md); the in-repo synthetic
+> corpus is the offline **LQS-Bench-mini** default. (CHANGELOG: `SPEC/CHANGELOG.md`
+> 1.1 — tooling only, the v1.0 wire format is unchanged.)
 
 ### Reference adapters
 
