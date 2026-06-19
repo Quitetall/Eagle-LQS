@@ -15,9 +15,6 @@ name = "eagle"
 path = "src/bin/eagle.rs"
 
 [dependencies]
-# The vendor-neutral LQS standard. Sibling-clone path for local dev;
-# switch to a git/crates.io version once Quitetall/LQS is published.
-#   parent/
-#     LQS/      (github.com/Quitetall/LQS)
-#     Eagle/    (this repo)
-lqs = { path = "../../LQS" }
+# LamQuant's internal test suite crate (sibling in this workspace).
+# lqs wraps open-eeg-codec-standard for neutral grading primitives.
+lqs = { path = "../lqs" }
