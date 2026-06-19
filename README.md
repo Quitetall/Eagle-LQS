@@ -105,7 +105,7 @@ chmod +x scripts/lqs-fastgate.sh .githooks/pre-push
 git config core.hooksPath .githooks   # installs pre-push hook
 ```
 
-`scripts/lqs-fastgate.sh` runs `cargo build -q -p eagle && cargo test -q -p eagle` — the same job as CI `eagle-rust`.
+`scripts/lqs-fastgate.sh` runs `cargo build -q -p eagle && cargo test -q -p eagle`, the same job as CI `eagle-rust`.
 
 ## License
 
