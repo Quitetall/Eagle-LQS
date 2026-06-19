@@ -305,6 +305,66 @@ pub fn write_edf_bytes(signal: &[Vec<i64>], fs: f64) -> Option<Vec<u8>> {
 }
 
 
+/// Parse an EDF ASCII integer field at `[off, off+len)`; `None` on overflow,
+/// out-of-bounds, or a non-integer field.
+fn edf_ascii_int(buf: &[u8], off: usize, len: usize) -> Option<i64> {
+    let end = off.checked_add(len)?;
+    if end > buf.len() {
+        return None;
+    }
+    std::str::from_utf8(&buf[off..end]).ok()?.trim().parse::<i64>().ok()
+}
+
+/// Read the digital int16 samples of an EDF, one `Vec<i64>` per signal, at
+/// each signal's **own** sample rate (mixed-rate / ragged channels intact).
+///
+/// This is the mixed-rate-aware counterpart of [`write_edf_bytes`]: unlike the
+/// vendor-neutral `open_eeg_codec_standard::edf::read_edf` (which enforces one
+/// shared rate and would reject a ragged file), it reads the per-signal
+/// `n_samples_per_record` and de-interleaves every data record, so a 250 Hz
+/// EEG channel beside a 1 Hz aux channel both round-trip. Returns `None` on a
+/// malformed / truncated file — never panics. (Annotation channels are not
+/// expected in the `lml`-reconstructed EDF and are not special-cased.)
+fn read_edf_any_rate(path: &Path) -> Option<Vec<Vec<i64>>> {
+    let buf = std::fs::read(path).ok()?;
+    if buf.len() < EDF_HEADER_BLOCK {
+        return None;
+    }
+    // Main-header fields (fixed EDF offsets): header_bytes@184, n_records@236,
+    // n_signals@252.
+    let header_bytes = edf_ascii_int(&buf, 184, 8)? as usize;
+    let n_records = edf_ascii_int(&buf, 236, 8)?;
+    let n_sig = edf_ascii_int(&buf, 252, 4)? as usize;
+    if n_sig == 0 || n_records < 0 || header_bytes > buf.len() {
+        return None;
+    }
+    // Per-signal `n_samples_per_record` block: the 9th per-signal field, after
+    // label(16)+transducer(80)+phys_dim(8)+phys_min(8)+phys_max(8)+dig_min(8)
+    // +dig_max(8)+prefilter(80) = 216 bytes each, all laid out across signals.
+    let nsamp_base = EDF_HEADER_BLOCK + n_sig * 216;
+    let mut spr = Vec::with_capacity(n_sig);
+    for i in 0..n_sig {
+        spr.push(edf_ascii_int(&buf, nsamp_base + i * 8, 8)? as usize);
+    }
+    // Data: `n_records` records; each record holds, per signal in order,
+    // `spr[i]` little-endian int16 samples. Concatenate per signal across records.
+    let mut chans: Vec<Vec<i64>> = spr.iter().map(|n| Vec::with_capacity(n * n_records as usize)).collect();
+    let mut pos = header_bytes;
+    for _ in 0..n_records {
+        for (i, &count) in spr.iter().enumerate() {
+            let bytes = count.checked_mul(2)?;
+            if pos + bytes > buf.len() {
+                return None;
+            }
+            for _ in 0..count {
+                chans[i].push(i16::from_le_bytes([buf[pos], buf[pos + 1]]) as i64);
+                pos += 2;
+            }
+        }
+    }
+    Some(chans)
+}
+
 impl LamQuantLossless {
     /// Encode `signal` to production `.lml` bytes, or `Vec::new()` on any
     /// failure (unsupported signal shape, `lml` error, I/O error).
@@ -389,13 +449,11 @@ impl LamQuantLossless {
             _ => return Vec::new(),
         }
 
-        // Re-read the byte-exact reconstructed EDF with the canonical LQS
-        // reader: this recovers every channel at its native rate, so a
-        // mixed-rate signal round-trips with all channels intact.
-        match lqs::edf::read_edf(&edf_path) {
-            Ok(sig) => sig.channels,
-            Err(_) => Vec::new(),
-        }
+        // Re-read the byte-exact reconstructed EDF with the mixed-rate-aware
+        // reader (the vendor-neutral standard's reader enforces one shared
+        // rate and would reject a ragged file): this recovers every channel
+        // at its native rate, so a mixed-rate signal round-trips intact.
+        read_edf_any_rate(&edf_path).unwrap_or_default()
     }
 }
 
