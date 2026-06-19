@@ -2,20 +2,21 @@
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20484969.svg)](https://doi.org/10.5281/zenodo.20484969)
+
 LamQuant validation + benchmarking suite. Reproduces every numerical claim in the *IEEE Journal of Biomedical and Health Informatics* paper "LamQuant Lossless: A Real-Time, Bit-Exact, Wirelessly-Deployable EEG Compression Algorithm" (2026 submission).
 
-**Cite:** [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20484969.svg)](https://doi.org/10.5281/zenodo.20484969)
 Eagle reproduces the LamQuant Lossless paper, archived at Zenodo: [`10.5281/zenodo.20484969`](https://doi.org/10.5281/zenodo.20484969).
 
-**API reference:** [API.md](API.md) (WIP — stabilizing post-refactor).
+**API reference:** [API.md](API.md).
 
-**Headline numbers (this suite reproduces them; full evidence in `evidence/*.json`):**
+**Headline numbers (full evidence in `evidence/*.json`):**
 - TUEG v2.0.2 (1.76 TB, 70,831 EDF files): **2.287:1** compression ratio
 - CHB-MIT: **2.7229:1** (15.9% improvement over Chen et al.)
 - RP2350 Hazard3 (RISC-V, Verilator-measured): 0.627 Msa/s, **119× real-time**, CPI 1.071
 - Bit-exact roundtrip verified on 88,147 encode/decode operations across 13 corpora and zero failures
 
-**API reference:** [API.md](API.md) (WIP — stabilizing post-refactor).
+**API reference:** [API.md](API.md).
 
 ## What's in here
 
@@ -79,12 +80,12 @@ python3 tools/verify_paper_claims.py
 # Expected: 60 PASS / 0 FAIL when evidence/ is fully populated
 ```
 
-## Two modes — external LQS vs internal LamQuant dev
+## Internal and External Tests
 
 Eagle's test/bench suite runs in two clearly-namespaced modes:
 
-**External — the LamQuant Standard (LQS).** Default. Codec-agnostic: the
-vendor-neutral **LQS** standard (its own repo, [Quitetall/LQS](https://github.com/Quitetall/LQS),
+**External — the Open EEG Codec Standard (OpenECS).** Default. Codec-agnostic: the
+vendor-neutral **ECS** standard (its own repo, [Quitetall/OpenECS](https://github.com/Quitetall/OpenECS),
 consumed here by the `eagle` crate) plus the agnostic Python suites treat any
 conforming codec as an opaque compress/decompress box and verify only
 externally-observable quantities (compression ratio, bit-exact round-trip,
@@ -92,7 +93,7 @@ latency, EDF parity). These run without the neural/torch stack and are what
 external CI executes:
 
 ```bash
-pytest -m "not internal"     # external LQS Python suite
+pytest -m "not internal"     # external Python suite
 cargo test -p eagle          # the eagle crate (pulls the sibling LQS standard)
 ```
 
@@ -144,7 +145,7 @@ python3 tools/bench_moabb_concordance.py --source moabb \
 
 ## Architecture
 
-Eagle is one repo in an 8-product Unix decomposition of LamQuant. It depends on **LamQuant-Lossless** (codec library) and optionally on **LamQuant-Neural** (when the neural codec ships) via Cargo feature flags.
+Eagle depends on **LamQuant-Lossless** (codec library) and optionally on **LamQuant-Neural** (when the neural codec ships) via Cargo feature flags.
 
 | Public | Private (for now) |
 |---|---|
@@ -180,7 +181,7 @@ is the fast local mirror of the CI `eagle-rust` job; run it standalone anytime.
 
 ## License
 
-GNU GENERAL PUBLIC LICENSE v3 (see `LICENSE.md`).
+GNU AFFERO GENERAL PUBLIC LICENSE v3 (see `LICENSE.md`).
 
 ## Cite
 
