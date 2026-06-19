@@ -119,6 +119,7 @@ pub fn run(codec: &dyn Codec, signal: &[Vec<i64>], fs: f64) -> LqsReport {
         let result = levels::grade(1.0, 0.0, cr, 0.0, &[]);
         debug_assert_eq!(result.grade, 'L', "exact + cr>=0.8 must grade L");
         return LqsReport {
+            spec_version: crate::SPEC_VERSION.to_string(),
             codec: codec.name().to_string(),
             dataset: "(single-signal)".to_string(),
             n_files: 1,
@@ -160,6 +161,7 @@ pub fn run(codec: &dyn Codec, signal: &[Vec<i64>], fs: f64) -> LqsReport {
     let result: ComplianceResult = levels::grade(r, prd, cr, snr_db, &grade_bands);
 
     LqsReport {
+        spec_version: crate::SPEC_VERSION.to_string(),
         codec: codec.name().to_string(),
         dataset: "(single-signal)".to_string(),
         n_files: 1,
@@ -195,7 +197,7 @@ fn lossless_per_band() -> Vec<BandResult> {
 /// leaderboard ranks. Holds the pooled metrics and the worst (lowest)
 /// grade observed across files — a codec is only as compliant as its
 /// weakest file.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct CorpusSummary {
     /// Codec name.
     pub codec: String,

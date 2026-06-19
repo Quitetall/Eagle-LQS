@@ -16,6 +16,7 @@
 
 use serde::{Deserialize, Serialize};
 
+use crate::harness::CorpusSummary;
 use crate::levels::ComplianceResult;
 
 /// Serialize a compliance result to pretty JSON.
@@ -86,6 +87,9 @@ impl BandResult {
 /// - audit trail: `violations` (why the next-higher tier failed)
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct LqsReport {
+    /// LQS spec version this report conforms to (e.g. "1.0"), so a report
+    /// is self-identifying out of context. Stamped by the harness.
+    pub spec_version: String,
     /// Codec name, e.g. "lamquant-lossless" or "gzip".
     pub codec: String,
     /// Dataset / holdout corpus identifier, e.g. "tuh-eeg-holdout".
@@ -291,12 +295,91 @@ pub fn leaderboard(reports: &[LqsReport]) -> String {
     s
 }
 
+/// The codec identity carried in a submission: the report name plus, for a
+/// manifest-defined external codec, the SHA-256 of its manifest (so the
+/// exact invocation is auditable). `None` for a built-in codec.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct CodecIdentity {
+    /// Codec report identifier.
+    pub name: String,
+    /// SHA-256 of the codec manifest, or `None` for a built-in codec.
+    pub manifest_sha256: Option<String>,
+}
+
+/// The corpus identity carried in a submission: name + version. Two
+/// submissions are only directly comparable when these agree.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct CorpusIdentity {
+    /// Corpus identifier, e.g. "lqs-smoke".
+    pub name: String,
+    /// Corpus version, e.g. "1.0.0".
+    pub version: String,
+}
+
+/// The LQS v1.0 results-submission envelope — the wire format two labs
+/// exchange (spec §9). Wraps the per-file reports, the corpus roll-up, and
+/// the codec/corpus identities, plus an **optional, advisory**
+/// task-concordance block that MUST NOT affect any grade (spec §10).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct LqsSubmission {
+    /// LQS spec version this submission conforms to (e.g. "1.0").
+    pub spec_version: String,
+    /// The codec under test.
+    pub codec: CodecIdentity,
+    /// The corpus the codec was graded on.
+    pub corpus: CorpusIdentity,
+    /// One report per graded file.
+    pub reports: Vec<LqsReport>,
+    /// The corpus roll-up (pooled CR, mean PRD/R, worst grade).
+    pub summary: CorpusSummary,
+    /// Optional, advisory downstream-task-preservation block. Opaque to the
+    /// grader; never alters a grade. `None` when not run.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub task_concordance: Option<serde_json::Value>,
+}
+
+impl LqsSubmission {
+    /// Assemble a submission, stamping the current [`crate::SPEC_VERSION`].
+    pub fn new(
+        codec: CodecIdentity,
+        corpus: CorpusIdentity,
+        reports: Vec<LqsReport>,
+        summary: CorpusSummary,
+    ) -> Self {
+        Self {
+            spec_version: crate::SPEC_VERSION.to_string(),
+            codec,
+            corpus,
+            reports,
+            summary,
+            task_concordance: None,
+        }
+    }
+
+    /// Attach an advisory task-concordance block (spec §10).
+    pub fn with_task_concordance(mut self, block: serde_json::Value) -> Self {
+        self.task_concordance = Some(block);
+        self
+    }
+
+    /// Serialize to pretty JSON — the standard exchange format.
+    pub fn to_json(&self) -> String {
+        serde_json::to_string_pretty(self).expect("LqsSubmission serializes to JSON")
+    }
+
+    /// Parse a submission back from its JSON form.
+    pub fn from_json(s: &str) -> Result<Self, serde_json::Error> {
+        serde_json::from_str(s)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     fn sample_report() -> LqsReport {
         LqsReport {
+            spec_version: crate::SPEC_VERSION.to_string(),
             codec: "lamquant-lossless".to_string(),
             dataset: "tuh-eeg-holdout".to_string(),
             n_files: 42,
@@ -323,6 +406,7 @@ mod tests {
 
     fn lossy_report() -> LqsReport {
         LqsReport {
+            spec_version: crate::SPEC_VERSION.to_string(),
             codec: "neural-lmq".to_string(),
             dataset: "tuh-eeg-holdout".to_string(),
             n_files: 42,

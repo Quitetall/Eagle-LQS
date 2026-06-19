@@ -37,12 +37,29 @@
 //! - [`harness`] — the compliance test runner (fill phase).
 //! - [`report`]  — JSON / badge reporting (fill phase).
 
+/// The LQS specification version this crate implements (see
+/// `SPEC/LQS-v1.0.md`). Stamped onto every emitted report and submission.
+pub const SPEC_VERSION: &str = "1.0";
+
+/// The major component of [`SPEC_VERSION`]. A grader refuses a manifest or
+/// submission whose major version it does not implement (spec §11).
+pub const SPEC_MAJOR: u64 = 1;
+
+/// Parse the major component of a `"MAJOR.MINOR"` spec-version string.
+pub fn spec_major(version: &str) -> Option<u64> {
+    version.split('.').next()?.parse().ok()
+}
+
 pub mod adapter;
+pub mod adapters_external;
 pub mod adapters_lamquant;
 pub mod bands;
+pub mod corpus;
 pub mod edf;
 pub mod harness;
 pub mod levels;
+pub mod manifest;
 pub mod metrics;
 pub mod report;
+pub mod subprocess;
 pub mod suites;
