@@ -687,10 +687,11 @@ fn exit_for_grade(grade: char) -> ExitCode {
 fn grade_rank(g: char) -> u8 {
     match g {
         'L' => 0,
-        'C' => 1,
-        'M' => 2,
-        'A' => 3,
-        _ => 4,
+        'N' => 1,
+        'C' => 2,
+        'M' => 3,
+        'A' => 4,
+        _ => 5,
     }
 }
 

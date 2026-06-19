@@ -101,9 +101,9 @@ fn lossy_codec_is_never_graded_lossless() {
     // The defining guarantee: a lossy codec never sneaks into L.
     assert!(!rep.bit_exact, "quantize must NOT be bit-exact");
     assert_ne!(rep.grade, 'L', "lossy codec must never grade L");
-    // It must land in one of the lossy tiers or below the floor.
+    // It must land in one of the lossy tiers (N/C/M/A) or below the floor.
     assert!(
-        matches!(rep.grade, 'C' | 'M' | 'A' | '\0'),
+        matches!(rep.grade, 'N' | 'C' | 'M' | 'A' | '\0'),
         "unexpected grade {:?}",
         rep.grade
     );

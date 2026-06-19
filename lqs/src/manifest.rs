@@ -105,8 +105,10 @@ impl std::error::Error for ManifestError {}
 pub fn load_codec_manifest<P: AsRef<Path>>(path: P) -> Result<CodecManifest, ManifestError> {
     let text = std::fs::read_to_string(path).map_err(ManifestError::Io)?;
     let manifest: CodecManifest = toml::from_str(&text).map_err(ManifestError::Parse)?;
+    // Accept this major or older (a newer grader reads older manifests); refuse
+    // a newer major it does not implement.
     match crate::spec_major(&manifest.spec_version) {
-        Some(m) if m == crate::SPEC_MAJOR => Ok(manifest),
+        Some(m) if m <= crate::SPEC_MAJOR => Ok(manifest),
         _ => Err(ManifestError::UnsupportedVersion(manifest.spec_version)),
     }
 }
@@ -167,7 +169,7 @@ mod tests {
     #[test]
     fn parses_minimal_with_defaults() {
         let m: CodecManifest = toml::from_str(MINIMAL).expect("minimal parses");
-        assert_eq!(m.spec_version, "1.0"); // serde default
+        assert_eq!(m.spec_version, crate::SPEC_VERSION); // serde default tracks the crate
         assert_eq!(m.codec.name, "gzip-ext");
         assert!(m.codec.declared_lossless);
         assert_eq!(m.codec.sample_dtype, SampleDtype::I32); // default

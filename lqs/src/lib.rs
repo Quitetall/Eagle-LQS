@@ -37,12 +37,15 @@
 //! - [`harness`] — the compliance test runner (fill phase).
 //! - [`report`]  — JSON / badge reporting (fill phase).
 
-/// The LQS specification version this crate implements (see
-/// `SPEC/LQS-v1.0.md`). Stamped onto every emitted report and submission.
-pub const SPEC_VERSION: &str = "1.0";
+/// The LQS specification version this crate implements (see `SPEC/`). Stamped
+/// onto every emitted report and submission. v1.1 adds the `N` (Near-Lossless)
+/// tier — additive within the v1 major (the manifest/submission wire format is
+/// unchanged), so v1.0 manifests still load.
+pub const SPEC_VERSION: &str = "1.1";
 
-/// The major component of [`SPEC_VERSION`]. A grader refuses a manifest or
-/// submission whose major version it does not implement (spec §11).
+/// The major component of [`SPEC_VERSION`]. A grader accepts a manifest whose
+/// major is this or older, and refuses a newer major it does not implement
+/// (spec §11).
 pub const SPEC_MAJOR: u64 = 1;
 
 /// Parse the major component of a `"MAJOR.MINOR"` spec-version string.

@@ -131,8 +131,9 @@ pub fn load_corpus_manifest<P: AsRef<Path>>(path: P) -> Result<CorpusManifest, C
     let text = std::fs::read_to_string(p)
         .map_err(|e| CorpusError::Io(p.display().to_string(), e))?;
     let manifest: CorpusManifest = toml::from_str(&text).map_err(CorpusError::Parse)?;
+    // Accept this major or older; refuse a newer major (see manifest loader).
     match crate::spec_major(&manifest.spec_version) {
-        Some(m) if m == crate::SPEC_MAJOR => Ok(manifest),
+        Some(m) if m <= crate::SPEC_MAJOR => Ok(manifest),
         _ => Err(CorpusError::UnsupportedVersion(manifest.spec_version)),
     }
 }

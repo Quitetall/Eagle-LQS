@@ -4,15 +4,25 @@ All notable changes to the LQS standard are recorded here. The spec is versioned
 independently of the `lqs` crate. See [`LQS-v1.0.md`](LQS-v1.0.md) §11 for the
 version/stability policy.
 
-## 1.1 — 2026-06-19 (tooling / DX — no wire-format change)
+## 1.1 — 2026-06-19 (Near-Lossless tier + developer-experience layer)
 
-Additive developer-experience release. **The normative spec, tier thresholds,
-metric formulas, codec contract, and the `LqsSubmission` JSON wire format are
-unchanged from 1.0** — a 1.0 grader reads a 1.1 submission unchanged and vice
-versa, so `SPEC_VERSION` stays `"1.0"`. Everything here is read-out / tooling
-layered on top:
+Additive minor within the **v1 major**: the manifest/submission **wire format
+and structure are unchanged**, and v1.0 manifests still load. `SPEC_VERSION`
+is now `"1.1"`. The one substantive standard change is a new grade value.
 
-### Added
+### Added — the **N (Near-Lossless)** tier
+- A fifth tier between **L** and **C**: **R ≥ 0.99, PRD ≤ 5 %, CR ≥ 1.0**
+  (no expansion), no per-band requirements — the strongest *non-lossless*
+  tier, for codecs whose reconstruction is small-error but not bit-exact
+  (e.g. a bounded-error near-lossless mode). Strictness order is now
+  **L < N < C < M < A**. The `grade` field can now be `N`; consumers that
+  switch on grades should handle it. Canonical thresholds: `src/levels.rs`;
+  Python mirror tracks them.
+- The "climb a tier" `violations` now report the tier **immediately above**
+  the one a codec passed (a precise one-tier-up to-do), instead of the
+  top-most tier.
+
+### Added — developer-experience tooling (no wire change)
 - **`eagle-lqs bench`** — grade the codec under test *and* built-in baselines
   over one corpus, ranked, with a per-codec **95% bootstrap CI** on mean R and a
   **paired sign-test** p-value versus the strongest baseline.

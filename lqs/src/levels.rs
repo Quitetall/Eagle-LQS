@@ -102,6 +102,21 @@ pub fn levels() -> Vec<LqsLevel> {
         band_fidelity: BTreeMap::new(),
     });
 
+    // ── N : Near-Lossless ───────────────────────────────────────────
+    // Not bit-exact, but distortion is small and the shape is essentially
+    // preserved: global PRD ≤ 5 %, R ≥ 0.99, and no expansion. No per-band
+    // requirements (a ≤5 % global PRD is already inside every clinical band
+    // floor). The strongest non-lossless tier. (LQS v2.0.)
+    out.push(LqsLevel {
+        name: "Near-Lossless".to_string(),
+        level: 'N',
+        max_prd: 5.0,
+        min_r: 0.99,
+        max_snr_loss: 2.0,
+        min_cr: 1.0,
+        band_fidelity: BTreeMap::new(),
+    });
+
     // ── C : Clinical ────────────────────────────────────────────────
     {
         let mut bands = BTreeMap::new();
@@ -221,9 +236,12 @@ fn check_lossy(
 ///    [`crate::metrics::prd_is_exact_zero`] on integer samples, not via
 ///    the float PRD, to avoid ~1e-12 roundoff spuriously failing the
 ///    exact-zero test.)
-/// 2. **C → M → A descent.** A lossy tier passes iff the global R, PRD,
+/// 2. **N → C → M → A descent.** A lossy tier passes iff the global R, PRD,
 ///    and CR thresholds are met AND every measured band meets its
 ///    per-band R and PRD floors. The highest fully-passing tier wins.
+///    `N` (Near-Lossless) is the strictest lossy tier — negligible
+///    distortion (R ≥ 0.999, PRD ≤ 0.5 %) without bit-exactness — and
+///    carries no per-band requirements.
 /// 3. **Below floor.** If no tier passes, grade is the `'\0'` sentinel.
 ///
 /// `per_band` is a slice of `(band_name, band_r, band_prd)` triples.
@@ -245,12 +263,12 @@ pub fn grade(
         };
     }
 
-    // 2. Descend C -> M -> A. Remember the violations that blocked the
-    //    strictest tier we tried, so when we settle on (say) M, the
-    //    reported violations explain why C failed.
-    let lossy_order = ['C', 'M', 'A'];
-    let mut blocking: Vec<String> = Vec::new();
-    let mut have_blocking = false;
+    // 2. Descend N -> C -> M -> A. The reported violations are those of the
+    //    tier IMMEDIATELY above the one that passes — a precise "climb ONE
+    //    tier" to-do list (e.g. a codec on M is told what blocks C, not what
+    //    blocks the topmost tier).
+    let lossy_order = ['N', 'C', 'M', 'A'];
+    let mut prev_violations: Vec<String> = Vec::new();
 
     for code in lossy_order {
         let level = tiers
@@ -261,19 +279,16 @@ pub fn grade(
         if violations.is_empty() {
             return ComplianceResult {
                 grade: code,
-                violations: blocking,
+                violations: prev_violations,
             };
         }
-        if !have_blocking {
-            blocking = violations;
-            have_blocking = true;
-        }
+        prev_violations = violations;
     }
 
-    // 3. Below the alerting floor.
+    // 3. Below the alerting floor — report what blocked the floor (A).
     ComplianceResult {
         grade: '\0',
-        violations: blocking,
+        violations: prev_violations,
     }
 }
 
@@ -293,16 +308,41 @@ mod tests {
     }
 
     #[test]
-    fn table_has_four_tiers_in_order() {
+    fn table_has_five_tiers_in_order() {
         let t = levels();
-        assert_eq!(t.len(), 4);
+        assert_eq!(t.len(), 5);
         assert_eq!(t[0].level, 'L');
-        assert_eq!(t[1].level, 'C');
-        assert_eq!(t[2].level, 'M');
-        assert_eq!(t[3].level, 'A');
-        // L tier carries the vendor-neutral CR floor.
+        assert_eq!(t[1].level, 'N');
+        assert_eq!(t[2].level, 'C');
+        assert_eq!(t[3].level, 'M');
+        assert_eq!(t[4].level, 'A');
+        // L tier carries the vendor-neutral CR floor; N has no per-band reqs.
         assert_eq!(t[0].min_cr, 0.8);
         assert!(t[0].band_fidelity.is_empty());
+        assert_eq!(t[1].max_prd, 5.0);
+        assert_eq!(t[1].min_r, 0.99);
+        assert_eq!(t[1].min_cr, 1.0);
+        assert!(t[1].band_fidelity.is_empty());
+    }
+
+    #[test]
+    fn near_lossless_tier() {
+        // Small distortion (PRD <= 5, R >= 0.99), compresses -> N (not L: not
+        // exact; the strongest non-lossless tier).
+        let res = grade(0.995, 3.0, 2.0, 0.0, &[]);
+        assert_eq!(res.grade, 'N');
+        assert!(res.violations.is_empty());
+
+        // PRD over the N ceiling (5%) but inside C -> falls to C; the climb-a-
+        // tier to-do points at the N PRD gate.
+        let res = grade(0.96, 7.0, 25.0, 0.0, &good_clinical_bands());
+        assert_eq!(res.grade, 'C');
+        assert!(res.violations.iter().any(|s| s.contains("PRD")));
+
+        // Near-lossless distortion but EXPANDS (cr < 1.0) -> cannot be N (and
+        // fails C/M/A on their CR floors too) -> below floor.
+        let res = grade(0.9999, 0.1, 0.9, 0.0, &[]);
+        assert_ne!(res.grade, 'N');
     }
 
     #[test]
@@ -328,10 +368,12 @@ mod tests {
 
     #[test]
     fn clinical_pass() {
-        // prd=5, r=0.96, cr=25 + good bands => 'C'.
+        // prd=5, r=0.96, cr=25 + good bands => 'C' (fails N on R<0.99).
         let res = grade(0.96, 5.0, 25.0, 0.0, &good_clinical_bands());
         assert_eq!(res.grade, 'C');
-        assert!(res.violations.is_empty());
+        // C is no longer the top lossy tier (N is above it), so the climb-a-
+        // tier to-do points at the N gate the codec missed (R 0.96 < 0.99).
+        assert!(res.violations.iter().any(|s| s.contains('R')));
     }
 
     #[test]
@@ -348,7 +390,7 @@ mod tests {
         assert_eq!(res.grade, '\0');
         assert!(!res.passed());
         assert_eq!(res.grade_str(), "");
-        // The violations explain why C (the strictest lossy tier) failed.
+        // The violations explain why the alerting floor (A) was missed.
         assert!(!res.violations.is_empty());
     }
 

@@ -68,13 +68,19 @@ fn verify_corpus_passes_on_smoke() {
 }
 
 #[test]
-fn below_floor_codec_exits_nonzero() {
-    // `quantize` over the smoke corpus is below the alerting floor (CR ~ 1).
+fn quantize_grades_near_lossless() {
+    // `quantize` (÷8) over the smoke corpus has PRD ~3% — inside the
+    // Near-Lossless tier (PRD ≤ 5, R ≥ 0.99), whose low CR floor (1.0)
+    // rewards small distortion even without high compression. Passes -> exit 0.
     let out = Command::new(bin())
         .args(["grade", "--codec", "quantize"])
         .arg("--corpus-manifest")
         .arg(smoke_manifest())
         .output()
         .expect("run grade quantize");
-    assert!(!out.status.success(), "below-floor codec exits non-zero");
+    assert!(out.status.success(), "near-lossless codec passes -> exit 0");
+    assert!(
+        String::from_utf8_lossy(&out.stdout).contains("LQS-N"),
+        "quantize grades the Near-Lossless tier"
+    );
 }

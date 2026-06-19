@@ -4,8 +4,11 @@
 //! the crate docs: Rust is what the grading gate enforces). The Python
 //! reference at
 //! `LamQuant-Lossless/reference_implementations/python_codec/lamquant_codec/lqs.py`
-//! (`LQS_LEVELS` dict) is a readable mirror. This test pins the SHARED
-//! lossy tiers C / M / A so that drift in EITHER implementation trips CI.
+//! (`LQS_LEVELS` dict) is a readable mirror. This test pins the lossy tier
+//! thresholds so that drift trips CI. C / M / A match the (deprecated) Python
+//! mirror field-for-field; **N (Near-Lossless) is the LQS v1.1 addition and is
+//! Rust-canonical** — the Python mirror is frozen/deprecated ("do not add
+//! features there") and predates N, so the N row below pins the Rust spec only.
 //!
 //! ## What is asserted
 //!
@@ -59,6 +62,17 @@ struct TierContract {
 /// C / M / A as written in the Python `LQS_LEVELS` dict. These are the
 /// authoritative shared thresholds; the Rust table must equal them.
 const PYTHON_CMA: &[TierContract] = &[
+    // 'N': Near-Lossless (LQS v2.0) — max_prd=5.0, min_r=0.99,
+    // max_snr_loss=2.0, min_cr=1.0, no per-band requirements.
+    TierContract {
+        code: 'N',
+        name: "Near-Lossless",
+        max_prd: 5.0,
+        min_r: 0.99,
+        max_snr_loss: 2.0,
+        min_cr: 1.0,
+        bands: &[],
+    },
     // 'C': Clinical — max_prd=9.0, min_r=0.95, max_snr_loss=3.0, min_cr=20.0
     TierContract {
         code: 'C',
@@ -214,12 +228,12 @@ fn l_tier_is_the_documented_divergence() {
     );
 }
 
-/// Sanity: the full Rust table is exactly the four tiers in strictness
-/// order. Guards against an accidental extra/missing tier sneaking past
-/// the per-tier assertions above.
+/// Sanity: the full Rust table is exactly the five tiers in strictness
+/// order (L < N < C < M < A). Guards against an accidental extra/missing
+/// tier sneaking past the per-tier assertions above.
 #[test]
-fn rust_table_is_lcma_in_order() {
+fn rust_table_is_lncma_in_order() {
     let t = levels::levels();
     let codes: Vec<char> = t.iter().map(|l| l.level).collect();
-    assert_eq!(codes, vec!['L', 'C', 'M', 'A'], "tier order / membership");
+    assert_eq!(codes, vec!['L', 'N', 'C', 'M', 'A'], "tier order / membership");
 }

@@ -2,6 +2,12 @@
 
 **Status:** Released · **Version:** 1.0 · **Spec ID:** `LQS-1.0`
 
+> **v1.1 addendum (additive, same v1 wire format).** A fifth tier **N
+> (Near-Lossless)** was added between **L** and **C** — R ≥ 0.99, PRD ≤ 5 %,
+> CR ≥ 1.0, no per-band requirements — so the tier ladder is now
+> **L < N < C < M < A**. See [`CHANGELOG.md`](CHANGELOG.md) §1.1 and
+> [`../STANDARD.md`](../STANDARD.md) §2. Everything else below is unchanged.
+
 LQS (the LamQuant Quality Standard) is a **vendor-neutral, codec-agnostic**
 benchmark for grading the quality of EEG signal compression. Any lab can take any
 codec — lossless, lossy, neural, classical, hybrid, in any programming language —

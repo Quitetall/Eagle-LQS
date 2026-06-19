@@ -22,6 +22,7 @@ fn esc(s: &str) -> String {
 fn grade_color(grade: char) -> &'static str {
     match grade {
         'L' => "#1a7f37", // green
+        'N' => "#2da44e", // bright green
         'C' => "#0969da", // blue
         'M' => "#9a6700", // amber
         'A' => "#8250df", // purple
@@ -160,10 +161,11 @@ pub fn render(submissions: &[LqsSubmission]) -> String {
 fn grade_rank(g: char) -> u8 {
     match g {
         'L' => 0,
-        'C' => 1,
-        'M' => 2,
-        'A' => 3,
-        _ => 4,
+        'N' => 1,
+        'C' => 2,
+        'M' => 3,
+        'A' => 4,
+        _ => 5,
     }
 }
 

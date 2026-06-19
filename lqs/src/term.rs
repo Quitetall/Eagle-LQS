@@ -44,6 +44,7 @@ fn grade_paint(grade: char, color: bool, text: &str) -> String {
     let st = style(text).force_styling(true).bold();
     match grade {
         'L' => st.green(),
+        'N' => st.green().bright(),
         'C' => st.cyan(),
         'M' => st.yellow(),
         'A' => st.magenta(),

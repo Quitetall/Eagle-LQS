@@ -222,10 +222,11 @@ impl LqsReport {
 fn grade_rank(grade: char) -> u8 {
     match grade {
         'L' => 0,
-        'C' => 1,
-        'M' => 2,
-        'A' => 3,
-        _ => 4, // '\0' below-floor sentinel sorts last.
+        'N' => 1,
+        'C' => 2,
+        'M' => 3,
+        'A' => 4,
+        _ => 5, // '\0' below-floor sentinel sorts last.
     }
 }
 
