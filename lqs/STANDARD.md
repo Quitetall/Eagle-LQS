@@ -2,6 +2,14 @@
 
 **A vendor-neutral, codec-agnostic benchmark for EEG compression.**
 
+> **The frozen, normative standard is [`SPEC/LQS-v1.0.md`](SPEC/LQS-v1.0.md).**
+> This file is the **living narrative companion** — rationale, worked detail, and
+> the `Codec`-trait view. When the two disagree on a requirement, the versioned
+> `SPEC/LQS-v1.0.md` governs; the canonical machine-readable source of every
+> threshold remains [`src/levels.rs`](src/levels.rs). To grade a non-Rust codec
+> via the file-based CLI contract, a hash-pinned corpus, and a results
+> submission, read `SPEC/LQS-v1.0.md` §6–§9.
+
 LQS is a specification *and* a runnable reference implementation for grading
 EEG codecs. It exists so that any lab can take any codec — lossless, lossy,
 neural, classical — wrap it behind one small interface, and obtain a single,
@@ -383,18 +391,23 @@ cargo run -p lqs --bin eagle-lqs -- <codec>
 - `quantize` — a deliberately-lossy demo codec (÷8 on encode, ×8 on decode)
   that lands in the lossy tiers, included to exercise the C/M/A battery.
 
-The CLI runs the harness over a **built-in synthetic multichannel EEG-like
-signal** (4 channels × 512 samples @ 256 Hz, a deterministic sum of sinusoids
-placed in distinct clinical bands), prints the human-readable report table and
-a one-line `LQS-<grade> COMPLIANT` badge, and **exits non-zero if the codec is
-below the alerting floor**.
+With no file argument the CLI grades a **built-in synthetic multichannel
+EEG-like signal** (4 channels × 512 samples @ 256 Hz, a deterministic sum of
+sinusoids placed in distinct clinical bands) so it runs anywhere with zero
+external data. Pass a second argument to grade a real recording:
+`eagle-lqs <codec> <file.edf>` reads the EDF via the bundled pure-Rust reader
+([`src/edf.rs`](src/edf.rs)) and grades it in place of the fixture. Either way
+the CLI prints the human-readable report table and a one-line
+`LQS-<grade> COMPLIANT` badge, and **exits non-zero if the codec is below the
+alerting floor**.
 
-> **EDF input is not yet wired.** Real-EDF / corpus loading from a file is a
-> documented `TODO` in [`src/bin/eagle_lqs.rs`](src/bin/eagle_lqs.rs); the CLI
-> currently always grades the built-in fixture so it runs anywhere with zero
-> external data. The library `harness::run` / `harness::run_corpus` API already
-> accepts arbitrary `(Vec<Vec<i64>>, fs)` signals, so an EDF reader can feed it
-> directly today — only the CLI argument parsing for a file path is pending.
+> **Whole-codec, whole-corpus grading (LQS v1.0).** Beyond the legacy positional
+> form, `eagle-lqs` adds the `grade`, `verify-corpus`, and `emit-corpus-manifest`
+> subcommands. These grade a **manifest-defined external codec** (any language,
+> via the file-based CLI contract — `SPEC/LQS-v1.0.md` §6/§7) over a
+> **hash-pinned corpus** (`SPEC/LQS-v1.0.md` §8) and emit a results
+> **submission** JSON (`SPEC/LQS-v1.0.md` §9). See the spec for the contract and
+> [`corpora/README.md`](corpora/README.md) for corpus pinning.
 
 ### Reference adapters
 
