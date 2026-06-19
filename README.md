@@ -8,6 +8,7 @@ LamQuant validation + benchmarking suite. Reproduces every numerical claim in th
 
 | Subdir | Purpose |
 |---|---|
+| `lqs/` | **LQS — the universal, vendor-neutral EEG-compression standard** (frozen spec `lqs/SPEC/LQS-v1.0.md`). Grade ANY codec, in ANY language, via a file-based CLI contract + TOML manifest over a hash-pinned corpus → one comparable `LqsSubmission`. `cargo run -p lqs --bin eagle-lqs -- grade --codec-manifest C.toml --corpus-manifest corpora/lqs-smoke.toml` |
 | `tools/bench_chbmit.py` | CHB-MIT subset compression-ratio + latency bench (Table II / IV in paper) |
 | `tools/bench_tueg_subsets.py` | Per-corpus TUEG breakdown (Appendix A) |
 | `tools/bench_per_file_cr.py` | Per-file CR distribution + boxplot data (Figure 3) |
