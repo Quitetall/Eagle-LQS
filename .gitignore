@@ -132,3 +132,4 @@ external/
 
 # Rust build
 target/
+.claude/
