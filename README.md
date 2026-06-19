@@ -1,189 +1,152 @@
 # Eagle
 
-[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20484969.svg)](https://doi.org/10.5281/zenodo.20484969)
 
-LamQuant validation + benchmarking suite. Reproduces every numerical claim in the *IEEE Journal of Biomedical and Health Informatics* paper "LamQuant Lossless: A Real-Time, Bit-Exact, Wirelessly-Deployable EEG Compression Algorithm" (2026 submission).
+LamQuant's validation and benchmarking suite. Reproduces every numerical claim in the *IEEE Journal of Biomedical and Health Informatics* paper "LamQuant Lossless: A Real-Time, Bit-Exact, Wirelessly-Deployable EEG Compression Algorithm" (2026 submission), archived at Zenodo [`10.5281/zenodo.20484969`](https://doi.org/10.5281/zenodo.20484969).
 
-Eagle reproduces the LamQuant Lossless paper, archived at Zenodo: [`10.5281/zenodo.20484969`](https://doi.org/10.5281/zenodo.20484969).
+**API reference:** [API.md](API.md)
 
-**API reference:** [API.md](API.md).
+## Headline numbers
 
-**Headline numbers (full evidence in `evidence/*.json`):**
-- TUEG v2.0.2 (1.76 TB, 70,831 EDF files): **2.287:1** compression ratio
-- CHB-MIT: **2.7229:1** (15.9% improvement over Chen et al.)
-- RP2350 Hazard3 (RISC-V, Verilator-measured): 0.627 Msa/s, **119× real-time**, CPI 1.071
-- Bit-exact roundtrip verified on 88,147 encode/decode operations across 13 corpora and zero failures
+| Metric | Value |
+|--------|-------|
+| TUEG v2.0.2 compression ratio (1.76 TB, 70,831 files) | **2.287:1** |
+| CHB-MIT compression ratio | **2.723:1** (+15.9% vs Chen et al.) |
+| RP2350 Hazard3 throughput (RISC-V, Verilator-measured, 150 MHz) | 0.627 Msa/s — **119× real-time**, CPI 1.071 |
+| Bit-exact round-trip verification | 88,147 encode/decode operations across 13 corpora — zero failures |
 
-**API reference:** [API.md](API.md).
+Full evidence: `evidence/*.json`. Verified end-to-end by `tools/verify_paper_claims.py`.
 
-## What's in here
+## Repository layout
 
-| Subdir | Purpose |
-|---|---|
-| `tools/bench_chbmit.py` | CHB-MIT subset compression-ratio + latency bench (Table II / IV in paper) |
-| `tools/bench_tueg_subsets.py` | Per-corpus TUEG breakdown (Appendix A) |
-| `tools/bench_per_file_cr.py` | Per-file CR distribution + boxplot data (Figure 3) |
-| `tools/bench_shannon_entropy.py` | Empirical entropy ceiling H_0, H_0(ΔX) for §II.D |
-| `tools/bench_edf_reader_parity.py` | MNE/pyedflib cross-validation (§IV.B four-layer protocol) |
-| `tools/bench_moabb_concordance.py` | BCI motor-imagery decoding concordance: does the codec preserve decode accuracy? compress→decompress→decode→compare (CSP+LDA); lossless → Δ = 0 |
-| `tools/bench_gzip_baseline.sh` | gzip/zstd baseline comparison on TUEG sample |
-| `tools/verify_paper_claims.py` | Single-shot script that walks every paper number → confirms against bundled `evidence/*.json` (60 PASS / 0 FAIL on a freshly-bundled supplementary) |
-| `tools/hazard3_bench/` | Rust no_std bench harness for RP2350 Hazard3 — produces `bench_encode.elf` for Verilator RTL simulation (paper §IV.D measured-cycle row) |
-| `tools/bench/bench_rs/` | Host-side criterion benches (codec hot paths) |
-| `tests/benchmarks/` | Compression-ratio + ablation + biological-fidelity + C-parity tests |
-| `tests/validation/` | EDF cross-check, NEDC seizure-detection downstream concordance |
-| `tests/audits/` | Format consistency audits across export paths |
+| Path | Purpose |
+|------|---------|
+| `eagle/` | Rust crate — LamQuant codec adapter + LQS fast gate |
+| `lqs/` | Rust crate — LamQuant Quality Suite (wraps [OpenECS](https://github.com/Quitetall/OpenECS)) |
+| `tools/bench_chbmit.py` | CHB-MIT CR + latency bench (paper Table II / IV) |
+| `tools/bench_tueg_subsets.py` | Per-corpus TUEG breakdown (paper Appendix A) |
+| `tools/bench_per_file_cr.py` | Per-file CR distribution + boxplot data (paper Figure 3) |
+| `tools/bench_shannon_entropy.py` | Empirical entropy ceiling H₀, H₀(ΔX) (paper §II.D) |
+| `tools/bench_edf_reader_parity.py` | MNE / pyedflib cross-validation (paper §IV.B) |
+| `tools/bench_moabb_concordance.py` | BCI motor-imagery decoding concordance |
+| `tools/bench_gzip_baseline.sh` | gzip / zstd baseline on TUEG sample |
+| `tools/verify_paper_claims.py` | Verifies every paper number against `evidence/*.json` |
+| `tools/hazard3_bench/` | `no_std` Rust bench harness — RP2350 Hazard3 Verilator RTL (paper §IV.D) |
+| `tools/bench/bench_rs/` | Host-side Criterion benches (codec hot paths) |
+| `tests/benchmarks/` | CR + ablation + biological-fidelity + C-parity tests |
 
 ## Dependencies
 
-Eagle depends on **[LamQuant-Lossless](https://github.com/Quitetall/LamQuant-Lossless)** (the codec under test). It is a **standalone** clone; no sibling layout required. The Rust bench crates pull `lamquant-firmware` directly over a pinned git-rev, so Eagle resolves on its own.
+Eagle depends on **[LamQuant-Lossless](https://github.com/Quitetall/LamQuant-Lossless)** (the codec under test). It is a standalone clone; no sibling layout is required. The Rust bench crates pull `lamquant-firmware` over a pinned git revision.
 
 ```bash
-git clone git@github.com:Quitetall/Eagle.git
-cd Eagle
+git clone git@github.com:Quitetall/Eagle-LQS.git
+cd Eagle-LQS
 
-# Python tools — install the codec wheel from LamQuant-Lossless
+# Python tools
 pip install "lamquant-codec @ git+https://github.com/Quitetall/LamQuant-Lossless.git#subdirectory=reference_implementations/python_codec"
 pip install -e .
 
-# Rust hazard3_bench (riscv32 firmware target)
+# Rust: RP2350 firmware bench (riscv32 target)
 cd tools/hazard3_bench && cargo build --target riscv32imac-unknown-none-elf
 
-# Rust host benches
-cd ../bench/bench_rs && cargo build
+# Rust: host-side Criterion benches
+cd tools/bench/bench_rs && cargo build
 ```
 
-Both `tools/hazard3_bench/Cargo.toml` and `tools/bench/bench_rs/Cargo.toml` reference `lamquant-firmware` via a pinned git-rev:
+The firmware bench crates pin `lamquant-firmware` to a specific commit:
 
 ```toml
 lamquant-firmware = { git = "https://github.com/Quitetall/LamQuant-Lossless.git", rev = "abcae4794c38b3d3e75d3c214063cf0307e3daba", default-features = false }
 ```
 
-Pulling a specific rev keeps the bench numbers reproducible against an exact codec commit. Bump the `rev` to re-pin against a newer LamQuant-Lossless release.
+Bump `rev` to re-pin against a newer LamQuant-Lossless release.
 
-## How to reproduce paper numbers
+## Reproducing paper numbers
 
 ```bash
-# 1. Bench a corpus (CHB-MIT shown; substitute path as needed)
+# CHB-MIT bench (Table II / IV)
 python3 tools/bench_chbmit.py --corpus /path/to/chbmit --out evidence/
 
-# 2. (Optional) bench TUEG subsets — requires 1.76 TB local mirror
+# TUEG subset bench — requires 1.76 TB local mirror (Appendix A)
 python3 tools/bench_tueg_subsets.py --corpus /path/to/tueg --out evidence/
 
-# 3. (Optional) Verilator RTL bench for RP2350 cycle count
+# RP2350 cycle count — requires Verilator (paper §IV.D)
 cd tools/hazard3_bench && bash run_bench.sh verilator
 
-# 4. Verify every paper claim against evidence JSON
+# Verify all paper claims against evidence JSON
 python3 tools/verify_paper_claims.py
-# Expected: 60 PASS / 0 FAIL when evidence/ is fully populated
+# Expected output: 60 PASS / 0 FAIL
 ```
 
-## Internal and External Tests
+## Test suite
 
-Eagle's test/bench suite runs in two clearly-namespaced modes:
+Eagle's tests are partitioned into two tiers by pytest marker.
 
-**External — the Open EEG Codec Standard (OpenECS).** Default. Codec-agnostic: the
-vendor-neutral **ECS** standard (its own repo, [Quitetall/OpenECS](https://github.com/Quitetall/OpenECS),
-consumed here by the `eagle` crate) plus the agnostic Python suites treat any
-conforming codec as an opaque compress/decompress box and verify only
-externally-observable quantities (compression ratio, bit-exact round-trip,
-latency, EDF parity). These run without the neural/torch stack and are what
-external CI executes:
+**External (default).** Codec-agnostic: the `lqs` crate and agnostic Python
+suites treat the codec as an opaque compress / decompress binary and verify
+only externally-observable quantities — compression ratio, bit-exact round-trip,
+latency, EDF byte-level parity. No neural stack required.
 
 ```bash
-pytest -m "not internal"     # external Python suite
-cargo test -p eagle          # the eagle crate (pulls the sibling LQS standard)
+pytest -m "not internal"   # external Python suite
+cargo test -p eagle        # Rust fast gate (lqs + LamQuantLossless adapter)
 ```
 
-**Internal — LamQuant vendor dev.** LamQuant-specific introspection
-benchmarks that reach inside the neural codec internals (FSQ entropy/activity,
-latent utilization, Cayley rotation, residual-FSQ, subband leakage, TNN memory,
-XNOR/cpop MACs, C-vs-Python parity, ablation matrix). They are a dev dependency
-of LamQuant, **not** part of the external standard; they require the sibling
-**LamQuant-Neural** source tree plus the **LamQuant-Lossless** wheel, stay in
-Python, and are gated behind the `internal` pytest marker so they are skipped
-by default. See [`tests/internal/README.md`](tests/internal/README.md).
+**Internal (LamQuant vendor).** Reaches inside neural codec internals — FSQ
+entropy, latent utilization, Cayley rotation, residual-FSQ, subband leakage,
+TNN memory, XNOR / cpop MACs, C-vs-Python parity, ablation matrix. Requires
+the sibling **LamQuant-Neural** source tree and the **LamQuant-Lossless** wheel.
 
 ```bash
-pip install -e '.[neural]'   # sibling neural + lossless stack
-pytest -m internal           # internal LamQuant dev suite
+pip install -e '.[neural]'
+pytest -m internal
 ```
 
-The introspection benches physically remain under `tests/benchmarks/`; they are
-tagged, not moved.
-
-**BCI downstream concordance (codec-agnostic, lives fully in Eagle).**
-`tools/bench_moabb_concordance.py` is the motor-imagery parallel to the NEURAL
-seizure-detection concordance: it asks *"does a codec preserve downstream BCI
-decoding accuracy?"* by running compress→decompress→decode→compare with a
-CSP+LDA pipeline and reporting the accuracy/kappa deltas. It is **codec-agnostic**
-— the codec is an opaque box reached through the `lml` binary (resolved from
-`$LML_BIN` → sibling `../LamQuant-Lossless/target/{release,debug}/lml` → `$PATH`),
-so it stays in the external LQS tier and does not depend on the neural stack
-(unlike the seizure module, which lives in sibling LamQuant-Neural and is
-`importorskip("ai_models")`-gated). The synthetic offline core needs only
-`numpy + mne + sklearn + pyedflib + the lml binary`; real motor-imagery datasets
-(BNCI2014_001, etc.) need the **moabb extra** (`pip install -e '.[moabb]'`) and
-are gated behind the `data` / `slow` markers. Be honest about what it proves: for
-a **lossless** codec Δ = 0 is *trivial-by-bit-exactness* (the round-trip is the
-identity at the sample level), so a `test_lossy_roundtrip_is_detected` guard
-proves the metric is not a self-fooling always-pass. The bench earns its keep
-when the neural / lossy codec ships and the deltas can actually move.
+**BCI downstream concordance.** `tools/bench_moabb_concordance.py` measures
+whether a codec preserves downstream motor-imagery decoding accuracy by running
+compress → decompress → CSP+LDA decode → compare. The codec is reached through
+the `lml` binary (`$LML_BIN` → sibling build → `$PATH`), so this bench belongs
+to the external tier and requires no neural stack.
 
 ```bash
-# offline core — codec-transparent on the real lml binary, no moabb:
+# Synthetic offline (no corpus download):
 LML_BIN=/path/to/lml pytest -m bci tests/validation/test_moabb_concordance.py
-LML_BIN=/path/to/lml python3 tools/bench_moabb_concordance.py --source synthetic
 
-# real motor-imagery data:
+# Real motor-imagery data (BNCI2014_001, etc.):
 pip install -e '.[moabb]'
 python3 tools/bench_moabb_concordance.py --source moabb \
     --dataset BNCI2014_001 --paradigm LeftRightImagery --subject 1
 ```
 
-## Architecture
+## Rust fast gate
 
-Eagle depends on **LamQuant-Lossless** (codec library) and optionally on **LamQuant-Neural** (when the neural codec ships) via Cargo feature flags.
-
-| Public | Private (for now) |
-|---|---|
-| LamQuant-Lossless (codec under test) | LamQuant (monorepo source of truth) |
-| **Eagle** (this repo — validation) | LamQuant-Neural (SNN/TNN models) |
-| LamQuant-Firmware (planned formal split) | LamQuant-Codec (turnkey integration) |
-| BLUT (training orchestrator) | |
-| LamQuant-Vision (LSL + viz) | |
-
-## Rust fast gate (eagle crate + sibling LQS)
-
-The vendor-neutral **LQS** standard is its own crate ([Quitetall/LQS](https://github.com/Quitetall/LQS),
-Rust-canonical for fast CI / pre-commit feedback). Eagle's `eagle` crate
-consumes it via a sibling-clone path dep — clone LQS next to this repo:
-
-```
-parent/
-  LQS/      (github.com/Quitetall/LQS)
-  Eagle/    (this repo)
-```
-
-CI runs the `eagle-rust` job (sibling-checkout LQS, then `cargo build -p eagle`
-+ `cargo test -p eagle`). To run the same gate locally before every push,
-enable the bundled hook:
+The `eagle` crate and the in-repo `lqs` crate form the Rust fast gate — the
+same check CI runs before any merge. To mirror it locally before every push:
 
 ```bash
 chmod +x scripts/lqs-fastgate.sh .githooks/pre-push
-git config core.hooksPath .githooks   # enables .githooks/pre-push (Rust fast gate)
+git config core.hooksPath .githooks
 ```
 
-`scripts/lqs-fastgate.sh` (`cargo build -q -p eagle && cargo test -q -p eagle`)
-is the fast local mirror of the CI `eagle-rust` job; run it standalone anytime.
+`scripts/lqs-fastgate.sh` runs `cargo build -q -p eagle && cargo test -q -p eagle`. Run it standalone at any time.
+
+## Architecture
+
+| Public | Private (for now) |
+|--------|------------------|
+| LamQuant-Lossless (codec under test) | LamQuant (monorepo source of truth) |
+| **Eagle-LQS** (this repo — validation) | LamQuant-Neural (SNN/TNN models) |
+| [OpenECS](https://github.com/Quitetall/OpenECS) (vendor-neutral EEG codec standard) | LamQuant-Codec (turnkey integration) |
+| BLUT (training orchestrator) | |
+| LamQuant-Vision (LSL + viz) | |
 
 ## License
 
-GNU AFFERO GENERAL PUBLIC LICENSE v3 (see `LICENSE.md`).
+GNU Affero General Public License v3 — see `LICENSE.md`.
 
-## Cite
+## Citation
 
 ```bibtex
 @article{lam2026lamquant,
