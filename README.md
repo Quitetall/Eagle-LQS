@@ -39,7 +39,7 @@ Evidence JSON: `evidence/`. Claim verification: `tools/verify_paper_claims.py`.
 
 ## Setup
 
-Depends on **[LamQuant-Lossless](https://github.com/Quitetall/LamQuant-Lossless)** (the codec under test). Standalone clone — no sibling layout required.
+Depends on **[LamQuant-Lossless](https://github.com/Quitetall/LamQuant-Lossless)** (the codec under test). No sibling layout required.
 
 ```bash
 git clone git@github.com:Quitetall/Eagle-LQS.git && cd Eagle-LQS
@@ -105,7 +105,7 @@ chmod +x scripts/lqs-fastgate.sh .githooks/pre-push
 git config core.hooksPath .githooks   # installs pre-push hook
 ```
 
-`scripts/lqs-fastgate.sh` runs `cargo build -q -p eagle && cargo test -q -p eagle` — the same job as CI `eagle-rust`.
+`scripts/lqs-fastgate.sh` runs `cargo build -q -p eagle && cargo test -q -p eagle`, the same job as CI `eagle-rust`.
 
 ## License
 
