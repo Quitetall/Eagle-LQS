@@ -24,6 +24,27 @@ flate2 = "1"
 toml = "0.8"
 # Pure-Rust SHA-256 for corpus-file integrity pinning (host-side only).
 sha2 = "0.10"
+# Pure-Rust data parallelism for corpus grading (host-side driver only — the
+# grading metric core stays dependency-light).
+rayon = "1"
+
+# ── Developer-experience layer (host-side: CLI / bench / report only; never
+#    pulled into the metric/grade core: metrics.rs, bands.rs, levels.rs). ──
+# Argument parsing + auto-generated --help / usage for every subcommand.
+clap = { version = "4", features = ["derive"] }
+# Live progress bars for long corpus runs (+ `console` for color / tty detection).
+indicatif = "0.17"
+console = "0.15"
+# Statistical rigor: distributions (sign-test binomial tail) + seeded bootstrap.
+statrs = "0.17"
+rand = "0.8"
+# Charts: SVG (embedded in the HTML report) and terminal braille plots. plotters
+# is trimmed to the SVG backend to avoid the bitmap/font/image dependency stack.
+plotters = { version = "0.3", default-features = false, features = [
+    "svg_backend", "line_series", "point_series", "histogram", "area_series",
+] }
+textplots = "0.8"
+
 # Optional zstd adapter — NOT enabled by default to keep CI sysdep-free.
 zstd = { version = "0.13", optional = true }
 

@@ -2,9 +2,10 @@
 //! a tampered hash is rejected.
 
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use lqs::adapter::Store;
-use lqs::corpus::{load_corpus_manifest, verify_and_load, CorpusError};
+use lqs::corpus::{grade_manifest_parallel, load_corpus_manifest, verify_and_load, CorpusError};
 use lqs::harness;
 
 /// The crate's `corpora/` directory (where smoke manifest paths resolve).
@@ -40,6 +41,48 @@ fn smoke_corpus_grades_store_lossless() {
     assert!(summary.all_bit_exact, "store is bit-exact on every file");
     assert_eq!(summary.worst_grade, 'L', "store grades LQS-L across the corpus");
     assert!(reports.iter().all(|r| r.grade == 'L'));
+}
+
+#[test]
+fn parallel_grader_matches_sequential_and_ticks_progress() {
+    let manifest =
+        load_corpus_manifest(corpora_dir().join("lqs-smoke.toml")).expect("manifest");
+
+    // Sequential reference (in-memory load + run_corpus).
+    let files = verify_and_load(&manifest, corpora_dir()).expect("verifies");
+    let (seq_reports, seq_summary) = harness::run_corpus(&Store, &files);
+
+    // Parallel, streaming grader straight from the manifest.
+    let ticks = AtomicUsize::new(0);
+    let (par_reports, par_summary) =
+        grade_manifest_parallel(&manifest, corpora_dir(), &Store, 1, || {
+            ticks.fetch_add(1, Ordering::Relaxed);
+        })
+        .expect("parallel grade");
+
+    assert_eq!(ticks.load(Ordering::Relaxed), 3, "progress ticks once per file");
+    assert_eq!(par_reports.len(), seq_reports.len());
+    // Grades + fidelity metrics must match exactly (throughput is wall-clock
+    // and excluded). Reports come back in manifest order from both paths.
+    for (p, s) in par_reports.iter().zip(&seq_reports) {
+        assert_eq!(p.grade, s.grade);
+        assert_eq!(p.cr, s.cr);
+        assert_eq!(p.r, s.r);
+        assert_eq!(p.prd, s.prd);
+        assert_eq!(p.dataset, "lqs-smoke", "parallel grader stamps the corpus name");
+    }
+    assert_eq!(par_summary.worst_grade, seq_summary.worst_grade);
+    assert_eq!(par_summary.mean_cr, seq_summary.mean_cr);
+    assert!(par_summary.all_bit_exact);
+}
+
+#[test]
+fn parallel_grader_rejects_tampered_hash() {
+    let mut manifest =
+        load_corpus_manifest(corpora_dir().join("lqs-smoke.toml")).expect("manifest");
+    manifest.file[1].sha256 = "0".repeat(64);
+    let err = grade_manifest_parallel(&manifest, corpora_dir(), &Store, 1, || {});
+    assert!(matches!(err, Err(CorpusError::Integrity { .. })), "integrity enforced in parallel");
 }
 
 #[test]

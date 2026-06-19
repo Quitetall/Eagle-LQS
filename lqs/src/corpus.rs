@@ -11,10 +11,14 @@
 use std::fmt;
 use std::path::{Path, PathBuf};
 
+use rayon::prelude::*;
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
 
-use crate::edf;
+use crate::adapter::{serialize, Codec};
+use crate::edf::{self, EdfSignal};
+use crate::harness::{self, CorpusSummary};
+use crate::report::LqsReport;
 
 /// A loaded corpus: one `(per-channel integer signal, sample rate)` tuple
 /// per file — the exact shape [`crate::harness::run_corpus`] consumes.
@@ -167,37 +171,119 @@ pub fn verify_and_load<P: AsRef<Path>>(
         //    must match the manifest.
         let signal =
             edf::read_edf(&full).map_err(|e| CorpusError::Edf(entry.path.clone(), e))?;
-        if signal.channels.len() != entry.n_chan {
-            return Err(CorpusError::Shape {
-                path: entry.path.clone(),
-                detail: format!(
-                    "expected {} channels, got {}",
-                    entry.n_chan,
-                    signal.channels.len()
-                ),
-            });
-        }
-        if let Some(bad) = signal.channels.iter().find(|c| c.len() != entry.n_samples) {
-            return Err(CorpusError::Shape {
-                path: entry.path.clone(),
-                detail: format!(
-                    "expected {} samples/channel, got a channel of {}",
-                    entry.n_samples,
-                    bad.len()
-                ),
-            });
-        }
-        if (signal.fs - entry.fs).abs() > 1e-6 {
-            return Err(CorpusError::Shape {
-                path: entry.path.clone(),
-                detail: format!("expected fs {}, got {}", entry.fs, signal.fs),
-            });
-        }
-
+        check_shape(entry, &signal)?;
         out.push((signal.channels, signal.fs));
     }
 
     Ok(out)
+}
+
+/// Verify a decoded EDF's shape (channel count, per-channel length, rate)
+/// against its manifest entry. Shared by [`verify_and_load`] and
+/// [`grade_manifest_parallel`].
+fn check_shape(entry: &CorpusFileEntry, signal: &EdfSignal) -> Result<(), CorpusError> {
+    if signal.channels.len() != entry.n_chan {
+        return Err(CorpusError::Shape {
+            path: entry.path.clone(),
+            detail: format!(
+                "expected {} channels, got {}",
+                entry.n_chan,
+                signal.channels.len()
+            ),
+        });
+    }
+    if let Some(bad) = signal.channels.iter().find(|c| c.len() != entry.n_samples) {
+        return Err(CorpusError::Shape {
+            path: entry.path.clone(),
+            detail: format!(
+                "expected {} samples/channel, got a channel of {}",
+                entry.n_samples,
+                bad.len()
+            ),
+        });
+    }
+    if (signal.fs - entry.fs).abs() > 1e-6 {
+        return Err(CorpusError::Shape {
+            path: entry.path.clone(),
+            detail: format!("expected fs {}, got {}", entry.fs, signal.fs),
+        });
+    }
+    Ok(())
+}
+
+/// Grade an entire corpus manifest in parallel, with bounded memory.
+///
+/// Unlike [`verify_and_load`] (which loads every file into RAM up front),
+/// this `rayon`-parallel grader processes each `[[file]]` entry independently:
+/// read → SHA-256 verify → `edf::read_edf` → shape-check →
+/// [`harness::run_measured`] → drop the signal. Only ~`num_threads` files are
+/// resident at once, so it scales to corpora far larger than RAM. `repeats`
+/// is forwarded to the throughput measurement; `progress` is called once per
+/// graded file (use it to drive a progress bar — it must be thread-safe).
+///
+/// Reports are returned in manifest order (deterministic). The first
+/// integrity / shape / read failure aborts the whole run with the precise
+/// [`CorpusError`] (which file races to surface first is unspecified, but a
+/// failure always aborts). Per-file *grades and metrics* match the sequential
+/// path exactly; only `throughput_mibs` differs (it is a wall-clock
+/// measurement).
+pub fn grade_manifest_parallel<F>(
+    manifest: &CorpusManifest,
+    base_dir: impl AsRef<Path>,
+    codec: &(dyn Codec + Sync),
+    repeats: usize,
+    progress: F,
+) -> Result<(Vec<LqsReport>, CorpusSummary), CorpusError>
+where
+    F: Fn() + Sync,
+{
+    let base = base_dir.as_ref();
+    let indexed: Vec<(usize, &CorpusFileEntry)> = manifest.file.iter().enumerate().collect();
+
+    let mut graded: Vec<(usize, LqsReport, u64, u64)> = indexed
+        .par_iter()
+        .map(|(idx, entry)| -> Result<(usize, LqsReport, u64, u64), CorpusError> {
+            let full = base.join(&entry.path);
+
+            // Integrity: bytes must hash to the pinned digest.
+            let bytes =
+                std::fs::read(&full).map_err(|e| CorpusError::Io(entry.path.clone(), e))?;
+            let got = sha256_hex(&bytes);
+            if !got.eq_ignore_ascii_case(&entry.sha256) {
+                return Err(CorpusError::Integrity {
+                    path: entry.path.clone(),
+                    expected: entry.sha256.to_lowercase(),
+                    got,
+                });
+            }
+
+            // Decode + shape, then grade this one file.
+            let signal =
+                edf::read_edf(&full).map_err(|e| CorpusError::Edf(entry.path.clone(), e))?;
+            check_shape(entry, &signal)?;
+            let raw = serialize(&signal.channels).len() as u64;
+            let mut rep = harness::run_measured(codec, &signal.channels, signal.fs, repeats);
+            rep.dataset = manifest.name.clone();
+            let comp = if rep.cr > 0.0 {
+                (raw as f64 / rep.cr).round() as u64
+            } else {
+                raw
+            };
+
+            progress();
+            Ok((*idx, rep, raw, comp))
+        })
+        .collect::<Result<Vec<_>, CorpusError>>()?;
+
+    // Restore manifest order for deterministic reporting.
+    graded.sort_by_key(|(idx, _, _, _)| *idx);
+    let per_file: Vec<(LqsReport, u64, u64)> = graded
+        .into_iter()
+        .map(|(_, rep, raw, comp)| (rep, raw, comp))
+        .collect();
+    let summary = harness::summarize(codec.name(), &per_file);
+    let reports = per_file.into_iter().map(|(r, _, _)| r).collect();
+    Ok((reports, summary))
 }
 
 #[cfg(test)]

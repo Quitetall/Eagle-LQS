@@ -80,29 +80,75 @@ fn raw_bytes(signal: &[Vec<i64>]) -> u64 {
 /// compressed buffers — a conservative proxy for the working set, since a
 /// streaming codec holds at least the bigger of its input and output.
 pub fn run(codec: &dyn Codec, signal: &[Vec<i64>], fs: f64) -> LqsReport {
-    let raw = raw_bytes(signal);
+    run_measured(codec, signal, fs, 1)
+}
 
-    // ── Encode: measure compressed size + encode throughput. ──────────
-    let t_enc = Instant::now();
-    let blob = codec.encode(signal, fs);
-    let enc_secs = t_enc.elapsed().as_secs_f64();
-    let comp = blob.len() as u64;
-
-    // ── Decode: measure decode throughput. ────────────────────────────
-    let t_dec = Instant::now();
-    let recon = codec.decode(&blob);
-    let dec_secs = t_dec.elapsed().as_secs_f64();
-
-    let cr = metrics::compression_ratio(raw, comp);
-
-    // Combined encode+decode throughput in MiB/s over the raw payload.
-    // Guard a zero/sub-tick elapsed time (tiny fixtures) so we report a
-    // finite rate rather than +inf.
-    let total_secs = enc_secs + dec_secs;
-    let throughput_mibs = if total_secs > 0.0 {
-        (raw as f64 / (1024.0 * 1024.0)) / total_secs
+/// Median of a slice (sorts it in place). `0.0` for an empty slice.
+fn median(xs: &mut [f64]) -> f64 {
+    if xs.is_empty() {
+        return 0.0;
+    }
+    xs.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+    let n = xs.len();
+    if n % 2 == 1 {
+        xs[n / 2]
     } else {
-        0.0
+        0.5 * (xs[n / 2 - 1] + xs[n / 2])
+    }
+}
+
+/// Like [`run`], but reports encode+decode throughput as the **median** of
+/// `repeats` timed round trips (after one untimed warm-up when `repeats > 1`),
+/// so the MiB/s figure is stable enough to cite. `repeats <= 1` is the
+/// single-shot path [`run`] uses — no warm-up, identical cost to before.
+pub fn run_measured(
+    codec: &dyn Codec,
+    signal: &[Vec<i64>],
+    fs: f64,
+    repeats: usize,
+) -> LqsReport {
+    let raw = raw_bytes(signal);
+    let reps = repeats.max(1);
+
+    // Warm up only when averaging — keeps the default single-shot path cheap
+    // (an extra round trip would double an external codec's subprocess cost).
+    if reps > 1 {
+        let _ = codec.decode(&codec.encode(signal, fs));
+    }
+
+    // Time `reps` round trips; keep the last blob/recon for grading (a
+    // deterministic codec yields the same bytes each time).
+    let mut blob = Vec::new();
+    let mut recon = Vec::new();
+    let mut rates = Vec::with_capacity(reps);
+    for _ in 0..reps {
+        let t = Instant::now();
+        blob = codec.encode(signal, fs);
+        recon = codec.decode(&blob);
+        let secs = t.elapsed().as_secs_f64();
+        // Guard a zero/sub-tick elapsed time (tiny fixtures) so we report a
+        // finite rate rather than +inf.
+        rates.push(if secs > 0.0 {
+            (raw as f64 / (1024.0 * 1024.0)) / secs
+        } else {
+            0.0
+        });
+    }
+
+    let comp = blob.len() as u64;
+    let cr = metrics::compression_ratio(raw, comp);
+    // Round the (wall-clock) throughput to 0.001 MiB/s. Two reasons: it keeps
+    // the figure stable + human-readable, and it makes the value safely
+    // round-trip through JSON — a full-precision f64 can lose 1 ULP across
+    // serialize→deserialize, which would break exact report equality. A
+    // non-finite measurement (degenerate sub-tick timing) clamps to 0.0.
+    let throughput_mibs = {
+        let m = median(&mut rates);
+        if m.is_finite() {
+            (m * 1000.0).round() / 1000.0
+        } else {
+            0.0
+        }
     };
 
     // Peak working bytes: the larger of the input and output buffers.
@@ -239,30 +285,50 @@ pub fn run_corpus(
     codec: &dyn Codec,
     files: &[(Vec<Vec<i64>>, f64)],
 ) -> (Vec<LqsReport>, CorpusSummary) {
-    let mut reports = Vec::with_capacity(files.len());
-    let mut cr_pairs: Vec<(u64, u64)> = Vec::with_capacity(files.len());
-    let mut sum_prd = 0.0f64;
-    let mut sum_r = 0.0f64;
+    // Pool CR by bytes: reconstruct (raw, comp) per file from raw_bytes and
+    // the report's cr. raw is exact; comp = raw / cr (cr is never 0 here
+    // because compression_ratio clamps the divisor to >= 1).
+    let per_file: Vec<(LqsReport, u64, u64)> = files
+        .iter()
+        .map(|(signal, fs)| {
+            let rep = run(codec, signal, *fs);
+            let raw = raw_bytes(signal);
+            let comp = if rep.cr > 0.0 {
+                (raw as f64 / rep.cr).round() as u64
+            } else {
+                raw
+            };
+            (rep, raw, comp)
+        })
+        .collect();
+
+    let summary = summarize(codec.name(), &per_file);
+    let reports = per_file.into_iter().map(|(r, _, _)| r).collect();
+    (reports, summary)
+}
+
+/// Build the [`CorpusSummary`] roll-up from per-file `(report, raw_bytes,
+/// comp_bytes)` triples — shared by [`run_corpus`] and the parallel grader so
+/// the pooling logic lives in exactly one place. CR is pooled by total bytes
+/// (`Σ raw / Σ comp`); PRD and R are averaged across files; the reported grade
+/// is the **worst** (lowest tier) observed. An empty corpus reports the
+/// below-floor sentinel.
+pub fn summarize(codec: &str, per_file: &[(LqsReport, u64, u64)]) -> CorpusSummary {
+    let n = per_file.len();
+    let cr_pairs: Vec<(u64, u64)> =
+        per_file.iter().map(|(_, raw, comp)| (*raw, (*comp).max(1))).collect();
+    let mean_cr = metrics::aggregate_cr(&cr_pairs);
+    let sum_prd: f64 = per_file.iter().map(|(r, _, _)| r.prd).sum();
+    let sum_r: f64 = per_file.iter().map(|(r, _, _)| r.r).sum();
+    let (mean_prd, mean_r) = if n > 0 {
+        (sum_prd / n as f64, sum_r / n as f64)
+    } else {
+        (0.0, 0.0)
+    };
     let mut worst_rank = 0u8;
-    let mut worst_grade = 'L';
+    let mut worst_grade = if n == 0 { '\0' } else { 'L' };
     let mut all_bit_exact = true;
-
-    for (signal, fs) in files {
-        let rep = run(codec, signal, *fs);
-
-        // Pool CR by bytes: reconstruct (raw, comp) from raw_bytes and the
-        // report's cr. raw is exact; comp = raw / cr (cr is never 0 here
-        // because compression_ratio clamps the divisor to >= 1).
-        let raw = raw_bytes(signal);
-        let comp = if rep.cr > 0.0 {
-            (raw as f64 / rep.cr).round() as u64
-        } else {
-            raw
-        };
-        cr_pairs.push((raw, comp.max(1)));
-
-        sum_prd += rep.prd;
-        sum_r += rep.r;
+    for (rep, _, _) in per_file {
         if !rep.bit_exact {
             all_bit_exact = false;
         }
@@ -271,32 +337,16 @@ pub fn run_corpus(
             worst_rank = rank;
             worst_grade = rep.grade;
         }
-        reports.push(rep);
     }
-
-    let n = files.len();
-    let mean_cr = metrics::aggregate_cr(&cr_pairs);
-    let (mean_prd, mean_r) = if n > 0 {
-        (sum_prd / n as f64, sum_r / n as f64)
-    } else {
-        (0.0, 0.0)
-    };
-    // Empty corpus: nothing graded, report the below-floor sentinel.
-    if n == 0 {
-        worst_grade = '\0';
-    }
-
-    let summary = CorpusSummary {
-        codec: codec.name().to_string(),
+    CorpusSummary {
+        codec: codec.to_string(),
         n_files: n,
         mean_cr,
         mean_prd,
         mean_r,
         worst_grade,
         all_bit_exact,
-    };
-
-    (reports, summary)
+    }
 }
 
 #[cfg(test)]

@@ -61,5 +61,6 @@ pub mod levels;
 pub mod manifest;
 pub mod metrics;
 pub mod report;
+pub mod stats;
 pub mod subprocess;
 pub mod suites;
