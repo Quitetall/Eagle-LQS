@@ -13,7 +13,8 @@ LamQuant's validation and benchmarking suite. Reproduces all numerical claims in
 |--------|--------|
 | TUEG v2.0.2 CR (1.76 TB, 70,831 files) | **2.287:1** |
 | CHB-MIT CR | **2.723:1** (+15.9% vs Chen et al.) |
-| RP2350 Hazard3 throughput (150 MHz, Verilator) | 0.627 Msa/s, **119× real-time**, CPI 1.071 |
+| RP2350 Hazard3 throughput (150 MHz, Verilator RTL sim) | 0.627 Msa/s, **119× real-time**, CPI 1.071 |
+| RP2350 Hazard3 throughput (150 MHz, **silicon** — Pico 2, /dev/ttyACM0) | 0.60 Msa/s, **116× real-time**, CPI 1.074 |
 | Bit-exact round-trip (13 corpora) | 88,147 operations, 0 failures |
 
 Evidence JSON: `evidence/`. Claim verification: `tools/verify_paper_claims.py`.
