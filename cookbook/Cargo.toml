@@ -1,0 +1,28 @@
+[package]
+name = "cookbook-eagle"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+description = "Eagle — LamQuant's testing/validation/benchmarking BLUT cookbook"
+license = "GPL-3.0-or-later"
+
+[lib]
+name = "cookbook_eagle"
+path = "src/lib.rs"
+
+[[bin]]
+name = "blut-eagle"
+path = "src/main.rs"
+
+[dependencies]
+blut = { path = "../../../training/engine", default-features = false }
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+schemars = "0.8"
+async-trait = "0.1"
+thiserror = "2"
+tracing = "0.1"
+anyhow = "1"
+
+[workspace]
