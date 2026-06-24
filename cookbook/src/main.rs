@@ -7,6 +7,6 @@
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let reg = cookbook_eagle::registry();
+    let reg = blut_cookbook_eagle::registry();
     blut::cli::run(reg).await
 }

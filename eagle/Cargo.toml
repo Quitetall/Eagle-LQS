@@ -2,8 +2,8 @@
 name = "eagle"
 version = "0.1.1"
 edition = "2021"
-license = "GPL-3.0-or-later"
-description = "Eagle — LamQuant's benchmarking tool. Uses the LQS standard to grade LamQuant codecs against EEG corpora."
+license = "AGPL-3.0-or-later"
+description = "Eagle — LamQuant's validation suite. LQS compliance, benchmarks, clinical tasks."
 repository = "https://github.com/Quitetall/Eagle"
 
 [lib]
@@ -15,6 +15,5 @@ name = "eagle"
 path = "src/bin/eagle.rs"
 
 [dependencies]
-# LamQuant's internal test suite crate (sibling in this workspace).
-# lqs wraps open-eeg-codec-standard for neutral grading primitives.
-lqs = { path = "../lqs" }
+# OpenECS — vendor-neutral EEG codec grading standard.
+open-eeg-codec-standard = "0.9"

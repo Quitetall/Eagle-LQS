@@ -1,6 +1,6 @@
 //! Real LamQuant-Lossless codec adapter.
 //!
-//! Where [`lqs::adapter`] ships the always-available reference codecs
+//! Where [`crate::adapter`] ships the always-available reference codecs
 //! (`store`, `gzip`, optional `zstd`), this module wires the **actual
 //! production lossless codec** — the `lml` CLI from the sibling
 //! LamQuant-Lossless workspace — behind the same [`Codec`] interface so
@@ -41,7 +41,7 @@
 //!   record with per-channel `samples_per_record`.
 //! - **decode**: `lml decode --to-edf` reconstructs the EDF
 //!   **byte-identical** (header + all channels + trailing — the path
-//!   `lml roundtrip` verifies), then the shared [`lqs::edf`] reader
+//!   `lml roundtrip` verifies), then the shared [`crate::edf`] reader
 //!   re-reads every channel at its native rate. This recovers ALL
 //!   channels, including slow mixed-rate aux channels — unlike the
 //!   raw-int32 decode, which emits only the dominant-rate EEG matrix and
@@ -61,7 +61,7 @@
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use lqs::adapter::Codec;
+use crate::adapter::Codec;
 
 /// Default location of the prebuilt sibling `lml` binary.
 const DEFAULT_LML_BIN: &str = "/tmp/lamquant-verify/LamQuant-Lossless/target/debug/lml";
@@ -206,7 +206,7 @@ fn edf_field(out: &mut Vec<u8>, value: &str, width: usize) -> Result<(), ()> {
 /// chosen so the stored rate matches `fs`). Returns `None` when the
 /// signal cannot be expressed as EDF digital samples: non-i16 values,
 /// ragged channels, or an empty / zero-length signal (see the module
-/// docs). The layout mirrors `lqs::edf::read_edf`'s parser exactly.
+/// docs). The layout mirrors `crate::edf::read_edf`'s parser exactly.
 pub fn write_edf_bytes(signal: &[Vec<i64>], fs: f64) -> Option<Vec<u8>> {
     let ns = signal.len();
     if ns == 0 {
@@ -358,7 +358,7 @@ impl LamQuantLossless {
     ///
     /// Reconstructs the full EDF via `lml decode --to-edf` (byte-identical,
     /// ALL channels including mixed-rate aux — the path `lml roundtrip`
-    /// verifies), then re-reads it with the shared [`lqs::edf`] parser. The
+    /// verifies), then re-reads it with the shared [`crate::edf`] parser. The
     /// raw-int32 decode is NOT used: it emits only the dominant-rate EEG
     /// matrix and silently drops slow aux channels, which would make a
     /// mixed-rate round trip non-bit-exact.
@@ -392,7 +392,7 @@ impl LamQuantLossless {
         // Re-read the byte-exact reconstructed EDF. We use a local parser
         // that reads each signal's own samples_per_record from the header,
         // so mixed-rate (ragged) signals round-trip with all channels intact.
-        // The canonical lqs::edf::read_edf enforces a single shared sample
+        // The canonical crate::edf::read_edf enforces a single shared sample
         // rate and would silently drop channels whose rate differs.
         read_edf_channels(&edf_path).unwrap_or_default()
     }
@@ -401,7 +401,7 @@ impl LamQuantLossless {
 /// Parse per-signal `samples_per_record` from an EDF file and return every
 /// channel's samples as little-endian `i64` values.
 ///
-/// Unlike `lqs::edf::read_edf`, this handles mixed-rate EDF where each signal
+/// Unlike `crate::edf::read_edf`, this handles mixed-rate EDF where each signal
 /// carries its own `samples_per_record` in the signal header. It reads exactly
 /// one data record (the layout `write_edf_bytes` always produces) and collects
 /// all channels in header order.
@@ -505,7 +505,7 @@ impl Codec for LamQuantLossless {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use lqs::harness;
+    use crate::harness;
 
     /// A known multi-channel i64 signal that fits the EDF digital domain
     /// (every value in the i16 range) and has equal-length channels, so it

@@ -23,18 +23,31 @@ fn synthetic(channels: usize, samples: usize, fs: f64) -> (Vec<Vec<i64>>, f64) {
 }
 
 fn main() {
-    let file = std::env::args().nth(1);
+    let args: Vec<String> = std::env::args().skip(1).collect();
+
+    // No args → launch the Eagle TUI.
+    if args.is_empty() {
+        let status = std::process::Command::new("eagle-tui").status();
+        match status {
+            Ok(s) => std::process::exit(s.code().unwrap_or(0)),
+            Err(e) => {
+                eprintln!("eagle: failed to launch eagle-tui: {e}");
+                eprintln!("Install via: cargo install --path eagle-tui");
+                std::process::exit(1);
+            }
+        }
+    }
+
+    // With args → CLI grading mode.
+    let file = &args[0];
     let fs = 256.0;
 
-    let (signal, fs) = match file.as_deref() {
-        Some(path) => match lqs::edf::read_edf(path) {
-            Ok(edf) => (edf.channels, edf.fs),
-            Err(e) => {
-                eprintln!("eagle: failed to read EDF {path}: {e}");
-                std::process::exit(3);
-            }
-        },
-        None => synthetic(4, 1024, fs),
+    let (signal, fs) = match eagle::edf::read_edf(file) {
+        Ok(edf) => (edf.channels, edf.fs),
+        Err(e) => {
+            eprintln!("eagle: failed to read EDF {file}: {e}");
+            std::process::exit(3);
+        }
     };
 
     let codec = match LamQuantLossless::resolve(fs) {
@@ -49,7 +62,7 @@ fn main() {
         }
     };
 
-    let report = lqs::harness::run(&codec, &signal, fs);
+    let report = eagle::harness::run(&codec, &signal, fs);
     println!("{}", report.human_table());
     // Pass = graded into a deployable tier; below-floor → nonzero.
     std::process::exit(if "LCMA".contains(report.grade) { 0 } else { 1 });
