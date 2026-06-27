@@ -21,4 +21,4 @@
 resolver = "2"
 # `eagle`  — LamQuant test orchestrator
 # `lqs`    — LamQuant's internal test suite; wraps open-eeg-codec-standard
-members = ["eagle", "eagle-tui"]
+members = ["eagle"]
