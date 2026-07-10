@@ -13,17 +13,28 @@ jobs:
   pytest:
     name: Pytest — mandatory offline owner lane
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+      - name: Checkout pinned Lossless binary owner
+        uses: actions/checkout@v4
+        with:
+          repository: Quitetall/LamQuant-Lossless
+          ref: 9b791145578121e4638bd2955354795526167841
+          path: LamQuant-Lossless
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - uses: dtolnay/rust-toolchain@stable
       - name: Install Python deps
         run: |
           pip install --upgrade pip
           pip install pytest numpy pyedflib mne scikit-learn
+      - name: Build pinned lml contract binary
+        run: cargo build --release --locked --manifest-path LamQuant-Lossless/Cargo.toml --bin lml
       - name: Run mandatory offline tests
+        env:
+          LML_BIN: ${{ github.workspace }}/LamQuant-Lossless/target/release/lml
         run: |
           pytest tests/ -m "not data" -v --tb=short
 
