@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-LamQuant Gen 7 — Golden Path End-to-End Test
+LamQuant Gen 7 — Golden Path End-to-End Tool
 =============================================
 Validates the complete encode→compress→decompress→decode pipeline.
 
@@ -18,10 +18,6 @@ Pass criteria:
   - PRD ≤ 40%
   - Compression ratio ≥ 5.0x
 """
-import pytest  # decomp(eagle): skip when sibling LamQuant-Neural / -Lossless not installed
-pytest.importorskip("lamquant_codec", reason="Cross-repo test; needs sibling LamQuant-Neural or -Lossless wheel installed")
-pytest.importorskip("precompute_l3_fast", reason="Cross-repo test; needs sibling LamQuant-Neural L3 precompute module")
-
 import os
 import sys
 import numpy as np
@@ -31,8 +27,13 @@ ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 sys.path.insert(0, os.path.join(ROOT_DIR, 'ai_models', 'student'))
 sys.path.insert(0, os.path.join(ROOT_DIR, 'ai_models'))
 
-from lamquant_codec.models.encoder import TernaryMobileNetV5_Subband
-from precompute_l3_fast import preprocess_subband_single
+try:
+    from lamquant_codec.models.encoder import TernaryMobileNetV5_Subband
+    from precompute_l3_fast import preprocess_subband_single
+except ModuleNotFoundError as error:
+    raise SystemExit(
+        "golden_path_e2e requires the pinned Neural, Lossless, and cookbook packages"
+    ) from error
 
 # --- Metrics ---
 

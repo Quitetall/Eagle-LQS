@@ -2,7 +2,7 @@ name: ci
 
 on:
   push:
-    branches: [main, "feat/**", "fix/**"]
+    branches: [main, "adr-0092/**", "feat/**", "fix/**"]
   pull_request:
     branches: [main]
 
@@ -11,7 +11,7 @@ env:
 
 jobs:
   pytest:
-    name: Pytest — benchmarks + validation + audits
+    name: Pytest — mandatory offline owner lane
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -22,12 +22,10 @@ jobs:
       - name: Install Python deps
         run: |
           pip install --upgrade pip
-          pip install pytest numpy pyedflib mne
-      - name: Run pytest (Lossless-independent subset)
+          pip install pytest numpy pyedflib mne scikit-learn
+      - name: Run mandatory offline tests
         run: |
-          # Tests that don't require sibling-cloned LamQuant-Lossless wheel.
-          # Coverage-dep tests gate via importorskip("lamquant_codec").
-          pytest tests/ -v --tb=short
+          pytest tests/ -m "not data" -v --tb=short
 
   eagle-rust:
     name: Eagle crate — build + test (sibling LQS) (fast gate)
