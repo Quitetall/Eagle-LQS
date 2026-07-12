@@ -5,7 +5,7 @@ version = 4
 [[package]]
 name = "abir"
 version = "0.1.0"
-source = "git+https://github.com/Quitetall/LamQuant-Lossless.git?rev=9b7ebc4688d602a7188af28248751d8141942069#9b7ebc4688d602a7188af28248751d8141942069"
+source = "git+https://github.com/Quitetall/LamQuant-Lossless.git?rev=ed5f3a4eecd99096a92b13bad4af4f80db6954ec#ed5f3a4eecd99096a92b13bad4af4f80db6954ec"
 
 [[package]]
 name = "base64"
@@ -180,12 +180,12 @@ dependencies = [
 [[package]]
 name = "lamquant-common"
 version = "0.1.3"
-source = "git+https://github.com/Quitetall/LamQuant-Lossless.git?rev=9b7ebc4688d602a7188af28248751d8141942069#9b7ebc4688d602a7188af28248751d8141942069"
+source = "git+https://github.com/Quitetall/LamQuant-Lossless.git?rev=ed5f3a4eecd99096a92b13bad4af4f80db6954ec#ed5f3a4eecd99096a92b13bad4af4f80db6954ec"
 
 [[package]]
 name = "lamquant-firmware"
 version = "0.1.0"
-source = "git+https://github.com/Quitetall/LamQuant-Firmware.git?rev=87ed1e2153d95c9b1b3dda26b11f1c064a2dd33b#87ed1e2153d95c9b1b3dda26b11f1c064a2dd33b"
+source = "git+https://github.com/Quitetall/LamQuant-Firmware.git?rev=66a760fa8dc43badaaaca0226562bc61c24d3021#66a760fa8dc43badaaaca0226562bc61c24d3021"
 dependencies = [
  "lamquant-firmware-common",
 ]
@@ -193,7 +193,7 @@ dependencies = [
 [[package]]
 name = "lamquant-firmware-common"
 version = "0.1.0"
-source = "git+https://github.com/Quitetall/LamQuant-Firmware.git?rev=87ed1e2153d95c9b1b3dda26b11f1c064a2dd33b#87ed1e2153d95c9b1b3dda26b11f1c064a2dd33b"
+source = "git+https://github.com/Quitetall/LamQuant-Firmware.git?rev=66a760fa8dc43badaaaca0226562bc61c24d3021#66a760fa8dc43badaaaca0226562bc61c24d3021"
 dependencies = [
  "embedded-alloc",
  "heapless",
@@ -216,7 +216,7 @@ dependencies = [
 [[package]]
 name = "lamquant-lml"
 version = "0.9.3"
-source = "git+https://github.com/Quitetall/LamQuant-Lossless.git?rev=9b7ebc4688d602a7188af28248751d8141942069#9b7ebc4688d602a7188af28248751d8141942069"
+source = "git+https://github.com/Quitetall/LamQuant-Lossless.git?rev=ed5f3a4eecd99096a92b13bad4af4f80db6954ec#ed5f3a4eecd99096a92b13bad4af4f80db6954ec"
 dependencies = [
  "base64 0.22.1",
  "lamquant-common",
@@ -228,7 +228,7 @@ dependencies = [
 [[package]]
 name = "lamquant-lml-mcu"
 version = "0.9.3"
-source = "git+https://github.com/Quitetall/LamQuant-Lossless.git?rev=9b7ebc4688d602a7188af28248751d8141942069#9b7ebc4688d602a7188af28248751d8141942069"
+source = "git+https://github.com/Quitetall/LamQuant-Lossless.git?rev=ed5f3a4eecd99096a92b13bad4af4f80db6954ec#ed5f3a4eecd99096a92b13bad4af4f80db6954ec"
 dependencies = [
  "abir",
  "lamquant-common",
@@ -238,7 +238,7 @@ dependencies = [
 [[package]]
 name = "lamquant-lml-optimum"
 version = "0.0.1"
-source = "git+https://github.com/Quitetall/LamQuant-Lossless.git?rev=9b7ebc4688d602a7188af28248751d8141942069#9b7ebc4688d602a7188af28248751d8141942069"
+source = "git+https://github.com/Quitetall/LamQuant-Lossless.git?rev=ed5f3a4eecd99096a92b13bad4af4f80db6954ec#ed5f3a4eecd99096a92b13bad4af4f80db6954ec"
 dependencies = [
  "lamquant-lml-mcu",
 ]
@@ -246,7 +246,7 @@ dependencies = [
 [[package]]
 name = "lamquant-weights-firmware"
 version = "7.7.0"
-source = "git+https://github.com/Quitetall/LamQuant-Firmware.git?rev=87ed1e2153d95c9b1b3dda26b11f1c064a2dd33b#87ed1e2153d95c9b1b3dda26b11f1c064a2dd33b"
+source = "git+https://github.com/Quitetall/LamQuant-Firmware.git?rev=66a760fa8dc43badaaaca0226562bc61c24d3021#66a760fa8dc43badaaaca0226562bc61c24d3021"
 
 [[package]]
 name = "libc"
