@@ -4,8 +4,8 @@
 
 use std::path::{Path, PathBuf};
 
-use blut::framework::artifact::Artifact;
 use blut::framework::ContentHash;
+use blut::framework::artifact::Artifact;
 use serde::{Deserialize, Serialize};
 
 // ── TestSignal ─────────────────────────────────────────────────────
@@ -22,13 +22,18 @@ pub struct TestSignal {
 impl TestSignal {
     pub fn new(channels: Vec<Vec<i64>>, fs: f64) -> Self {
         let content_hash = hash_signal(&channels);
-        Self { channels, fs, content_hash }
+        Self {
+            channels,
+            fs,
+            content_hash,
+        }
     }
 }
 
 impl Artifact for TestSignal {
     const KIND: &'static str = "eagle.test_signal";
     const SCHEMA: u32 = 1;
+    const INLINE: bool = true;
 
     fn content_hash(&self) -> ContentHash {
         self.content_hash
@@ -53,6 +58,7 @@ pub struct EncodedBlob {
 impl Artifact for EncodedBlob {
     const KIND: &'static str = "eagle.encoded_blob";
     const SCHEMA: u32 = 1;
+    const INLINE: bool = true;
 
     fn content_hash(&self) -> ContentHash {
         self.content_hash
@@ -79,6 +85,7 @@ pub struct RoundtripResult {
 impl Artifact for RoundtripResult {
     const KIND: &'static str = "eagle.roundtrip_result";
     const SCHEMA: u32 = 1;
+    const INLINE: bool = true;
 
     fn content_hash(&self) -> ContentHash {
         self.content_hash
@@ -113,6 +120,7 @@ pub struct RoundtripEntry {
 impl Artifact for AuditReport {
     const KIND: &'static str = "eagle.audit_report";
     const SCHEMA: u32 = 1;
+    const ALLOW_EXTERNAL_PATHS: bool = true;
 
     fn content_hash(&self) -> ContentHash {
         self.content_hash
@@ -139,4 +147,18 @@ pub fn hash_signal(channels: &[Vec<i64>]) -> ContentHash {
 /// SHA-256 over raw bytes.
 pub fn hash_bytes(bytes: &[u8]) -> ContentHash {
     ContentHash::of_bytes(bytes)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[allow(clippy::assertions_on_constants)]
+    #[test]
+    fn artifact_ownership_contract_is_explicit() {
+        assert!(TestSignal::INLINE);
+        assert!(EncodedBlob::INLINE);
+        assert!(RoundtripResult::INLINE);
+        assert!(AuditReport::ALLOW_EXTERNAL_PATHS);
+    }
 }

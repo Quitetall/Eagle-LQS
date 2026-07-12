@@ -13,7 +13,7 @@ use blut::framework::stage::{Stage, StageContext};
 
 use crate::artifacts::eagle::hash_signal;
 use crate::artifacts::{EncodedBlob, RoundtripResult};
-use crate::backends::eagle::runner::{read_edf_channels, resolve_lml_bin, ScratchDir};
+use crate::backends::eagle::runner::{ScratchDir, read_edf_channels, resolve_lml_bin};
 use crate::errors;
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize, schemars::JsonSchema)]
@@ -27,7 +27,9 @@ pub struct Args {
     pub original_channels: Vec<Vec<i64>>,
 }
 
-fn default_codec() -> String { "lamquant-lossless".into() }
+fn default_codec() -> String {
+    "lamquant-lossless".into()
+}
 
 pub struct EagleDecode;
 
@@ -105,8 +107,8 @@ impl Stage for EagleDecode {
             let detail = find_first_diff(&args.original_channels, &decoded);
             return Err(StageError::Backend(
                 errors::roundtrip_failure(Self::NAME)
-                    .context("ch", &n_channels.to_string())
-                    .context("len", &n_samples.to_string())
+                    .context("ch", n_channels.to_string())
+                    .context("len", n_samples.to_string())
                     .into_error(&detail),
             ));
         }
@@ -140,10 +142,7 @@ fn find_first_diff(original: &[Vec<i64>], decoded: &[Vec<i64>]) -> String {
         }
         for (i, (&o, &d)) in orig.iter().zip(dec.iter()).enumerate() {
             if o != d {
-                return format!(
-                    "ch{} sample {}: original={}, decoded={}",
-                    ch, i, o, d
-                );
+                return format!("ch{} sample {}: original={}, decoded={}", ch, i, o, d);
             }
         }
     }
