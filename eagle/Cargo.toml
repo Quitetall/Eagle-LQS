@@ -16,4 +16,5 @@ path = "src/bin/eagle.rs"
 
 [dependencies]
 # OpenECS — vendor-neutral EEG codec grading standard.
-open-eeg-codec-standard = "0.9"
+# Exact owner revision required by ADR 0092 A17 source convergence.
+open-eeg-codec-standard = { git = "https://github.com/Quitetall/OpenECS.git", rev = "8435094e4142bb8ad3e32c9814bf86aa33daef76" }
