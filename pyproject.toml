@@ -12,6 +12,7 @@ license = { text = "GPL-3.0-or-later" }
 authors = [{ name = "Brian Lam", email = "briankhanglam@gmail.com" }]
 keywords = ["eeg", "benchmark", "validation", "reproducibility", "compression"]
 dependencies = [
+    "abir-biosignal @ git+https://github.com/Quitetall/ABIR.git@c101513167ad8d7cdefa6387b20c644fdaf66432",
     "numpy>=1.24",
     "pyedflib>=0.1.30",
     "mne>=1.6",
