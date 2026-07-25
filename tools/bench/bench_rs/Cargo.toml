@@ -16,7 +16,7 @@ debug = false
 panic = "abort"
 
 [dependencies]
-lamquant-firmware = { git = "https://github.com/Quitetall/LamQuant-Firmware.git", rev = "a8d88a513fdc3f03c7f1b4bbbb0ceeb4fb2c3448", default-features = false }
+lamquant-firmware = { git = "https://github.com/Quitetall/LamQuant-Firmware.git", rev = "8d95abe5a0ee367643e773608fdca0a04fe307d5", default-features = false }
 
 # Standalone host workspace — do NOT inherit the embedded target.
 [workspace]
