@@ -164,13 +164,22 @@ def sample_seizure_mask():
 
 @pytest.fixture
 def ternary_model():
-    """Fresh TernaryMobileNetV5 autoencoder instance on CPU in eval mode."""
-    import torch
-    from lamquant_codec.models.encoder import TernaryMobileNetV5
-    torch.manual_seed(0)
-    m = TernaryMobileNetV5(in_ch=21, latent_dim=32)
-    m.eval()
-    return m
+    """Retired: built from the duplicate Python codec, which is sequestered.
+
+    Gen 8 Package 32 retired `lamquant_codec`, so this fixture could only
+    raise ImportError -- and because the import sits in the fixture body
+    rather than at module scope, it never blocked collection and failed
+    silently at run time instead.
+
+    Skipped rather than deleted so the gap stays visible: dependents report a
+    reason instead of `fixture 'ternary_model' not found`, and tests here that
+    do not need it keep running. Mirrors the same fixture in the meta-repo's
+    tests/conftest.py.
+    """
+    pytest.skip(
+        "TernaryMobileNetV5 came from the retired Python codec (Package 32); "
+        "no replacement fixture is wired to codec-neural yet"
+    )
 
 
 @pytest.fixture
