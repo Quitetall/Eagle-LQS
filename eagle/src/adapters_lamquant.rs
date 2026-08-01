@@ -164,13 +164,7 @@ impl ScratchDir {
         use std::sync::atomic::{AtomicU64, Ordering};
         static SEQ: AtomicU64 = AtomicU64::new(0);
         let seq = SEQ.fetch_add(1, Ordering::Relaxed);
-        let name = format!(
-            "lqs_lml_{}_{}_{}_{}",
-            std::process::id(),
-            nanos,
-            seq,
-            tag
-        );
+        let name = format!("lqs_lml_{}_{}_{}_{}", std::process::id(), nanos, seq, tag);
         let path = std::env::temp_dir().join(name);
         std::fs::create_dir_all(&path)?;
         Ok(Self { path })
@@ -303,7 +297,6 @@ pub fn write_edf_bytes(signal: &[Vec<i64>], fs: f64) -> Option<Vec<u8>> {
 
     Some(buf)
 }
-
 
 impl LamQuantLossless {
     /// Encode `signal` to production `.lml` bytes, or `Vec::new()` on any
@@ -493,7 +486,11 @@ impl Codec for LamQuantLossless {
     fn encode(&self, signal: &[Vec<i64>], fs: f64) -> Vec<u8> {
         // Prefer the rate the harness passes; fall back to the adapter's
         // configured fs only if the caller hands us a non-positive rate.
-        let rate = if fs.is_finite() && fs > 0.0 { fs } else { self.fs };
+        let rate = if fs.is_finite() && fs > 0.0 {
+            fs
+        } else {
+            self.fs
+        };
         self.try_encode(signal, rate)
     }
 
@@ -573,7 +570,6 @@ mod tests {
         assert!(write_edf_bytes(&[vec![0, 1, -1, i16::MAX as i64]], 256.0).is_some());
     }
 
-
     #[test]
     fn empty_blob_decodes_to_empty_signal() {
         // Decode side must be panic-free on an empty/absent blob even
@@ -643,9 +639,15 @@ mod tests {
         };
         let signal: Vec<Vec<i64>> = vec![vec![10, -20, 30, -40, 50, -60, 70, -80], vec![1, -2, 3]];
         let blob = codec.encode(&signal, 256.0);
-        assert!(!blob.is_empty(), "encode produced no .lml for ragged signal");
+        assert!(
+            !blob.is_empty(),
+            "encode produced no .lml for ragged signal"
+        );
         let back = codec.decode(&blob);
-        assert_eq!(back, signal, "ragged mixed-rate signal must round-trip bit-exact");
+        assert_eq!(
+            back, signal,
+            "ragged mixed-rate signal must round-trip bit-exact"
+        );
 
         // The harness reports zero distortion for the ragged signal.
         // bit_exact in EcsReport is only set when cr >= 0.8; this tiny

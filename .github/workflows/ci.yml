@@ -68,10 +68,15 @@ jobs:
       - name: cargo test -p eagle
         working-directory: Eagle
         run: cargo test -p eagle
-      - name: cargo fmt -p eagle --check (advisory)
+      # Enforcing, not advisory. It was `continue-on-error: true`, and that was
+      # hiding a real failure: `eagle/src/adapters_lamquant.rs` had drifted out
+      # of rustfmt conformance and the lane reported success anyway. Formatting
+      # needs no token and no sibling checkout, so there is nothing here that
+      # can legitimately fail for environmental reasons -- unlike the
+      # sibling-clone jobs below, whose suppression is real. See ADR 0152.
+      - name: cargo fmt -p eagle --check
         working-directory: Eagle
         run: cargo fmt -p eagle -- --check
-        continue-on-error: true
 
   hazard3-bench-check:
     name: hazard3_bench cargo check (sibling-clone Lossless)
