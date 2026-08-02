@@ -25,20 +25,18 @@ neural codec internals:
 
 ## Why they are Python-only
 
-They require the full LamQuant **neural / torch stack** — `torch`, the
-`lamquant_codec.models.encoder` (`TernaryMobileNetV5_Subband`) module, and
-trained checkpoints. They cannot be expressed in the external Rust `lqs/`
-crate or the codec-agnostic Python suites. They stay in Python by design.
+They require the full LamQuant **neural / torch stack** — `torch`,
+`lamquant-neural` modules, and trained checkpoints. They cannot be expressed
+in the external Rust `lqs/` crate or the codec-agnostic Python suites.
+They stay in Python by design.
 
 ## Dependency contract
 
-To run these you need the **sibling LamQuant-Neural** source tree (for
-`lamquant_codec.models.*`) *and* the **LamQuant-Lossless wheel** (the codec
-under test). Install per the Eagle root README "Sibling-clone" path, then add
-the neural extra:
+To run these you need **LamQuant-Neural** and the **LamQuant-Lossless wheel**
+under test. Install per the Eagle root README, then add the neural extra:
 
 ```bash
-pip install -e '.[neural]'   # pulls lamquant-neural alongside lamquant-codec
+pip install -e '.[benchmark,rust-parity,neural]'
 ```
 
 Without that stack the imports at the top of each benchmark module will fail.

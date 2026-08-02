@@ -8,37 +8,47 @@ version = "0.1.0"
 description = "Eagle — LamQuant validation + benchmarking suite (reproduces IEEE TBioCAS 2026 paper numbers)"
 readme = "README.md"
 requires-python = ">=3.10"
-license = { text = "GPL-3.0-or-later" }
+license = "Apache-2.0"
 authors = [{ name = "Brian Lam", email = "briankhanglam@gmail.com" }]
 keywords = ["eeg", "benchmark", "validation", "reproducibility", "compression"]
-dependencies = [
-    "abir-biosignal @ git+https://github.com/Quitetall/ABIR.git@c101513167ad8d7cdefa6387b20c644fdaf66432",
-    "numpy>=1.24",
-    "pyedflib>=0.1.30",
-    "mne>=1.6",
-    # Codec under test: install sibling LamQuant-Lossless wheel first
-    #   pip install -e ../LamQuant-Lossless/reference_implementations/python_codec
-    "lamquant-codec",
-]
+dependencies = []
 
 [project.optional-dependencies]
+benchmark = [
+    "numpy>=1.24,<3",
+    "mne>=1.6,<2",
+    "pyedflib>=0.1.30,<0.2",
+]
 neural = [
     # Some validation tests cross-check neural-codec inference.
     # Install sibling LamQuant-Neural for the full suite.
-    "lamquant-neural",
+    "lamquant-neural>=0.1,<0.2",
+]
+rust-parity = [
+    # Rust and Python wheel parity checks.
+    "lamquant-core>=0.9.3,<0.10",
 ]
 moabb = [
     # Real motor-imagery datasets for the BCI downstream concordance bench
     # (tools/bench_moabb_concordance.py). NOT a hard dep — the synthetic
     # offline core needs only numpy+mne+sklearn+pyedflib+the lml binary.
-    "moabb>=1.0",
-    "pyriemann>=0.5",
+    "moabb>=1.0,<2.0",
+    "pyriemann>=0.5,<0.8",
+    "numpy>=1.24,<3",
+    "mne>=1.6,<2",
+    "pyedflib>=0.1.30,<0.2",
 ]
-dev = ["pytest>=8", "ruff"]
+dev = ["pytest>=8,<10", "ruff>=0.6,<1"]
+
+[project.scripts]
+eagle-verify-claims = "eagle.claims:main"
 
 [tool.setuptools]
-# Eagle ships scripts (tools/*.py), not an importable package tree.
-py-modules = []
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["eagle*"]
 
 [tool.pytest.ini_options]
 markers = [

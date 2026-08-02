@@ -1,6 +1,6 @@
 # Eagle-LQS
 
-[![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
+[![License: component-specific](https://img.shields.io/badge/license-component--specific-blue.svg)](#license)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20484969.svg)](https://doi.org/10.5281/zenodo.20484969)
 
 LamQuant's validation and benchmarking suite. Reproduces all numerical claims in "LamQuant Lossless: A Real-Time, Bit-Exact, Wirelessly-Deployable EEG Compression Algorithm" (*IEEE JBHI*, 2026 submission), archived at Zenodo [`10.5281/zenodo.20484969`](https://doi.org/10.5281/zenodo.20484969).
@@ -45,8 +45,7 @@ Depends on **[LamQuant-Lossless](https://github.com/Quitetall/LamQuant-Lossless)
 git clone git@github.com:Quitetall/Eagle-LQS.git && cd Eagle-LQS
 
 # Python tools
-pip install "lamquant-codec @ git+https://github.com/Quitetall/LamQuant-Lossless.git#subdirectory=reference_implementations/python_codec"
-pip install -e .
+pip install -e '.[benchmark,rust-parity]'
 
 # Rust: RP2350 firmware bench
 cd tools/hazard3_bench && cargo build --target riscv32imac-unknown-none-elf
@@ -84,7 +83,7 @@ cargo test -p eagle
 **Internal.** LamQuant-specific introspection: FSQ entropy, latent utilization, Cayley rotation, residual-FSQ, subband leakage, TNN memory, XNOR/cpop MAC counts, C-vs-Python parity, ablation matrix. Requires LamQuant-Neural source and LamQuant-Lossless wheel.
 
 ```bash
-pip install -e '.[neural]'
+pip install -e '.[benchmark,rust-parity,neural]'
 pytest -m internal
 ```
 
@@ -109,7 +108,11 @@ git config core.hooksPath .githooks   # installs pre-push hook
 
 ## License
 
-GNU Affero General Public License v3 — see `LICENSE.md`.
+Licensing is component-specific:
+
+- Python validation tooling: Apache-2.0, under `LICENSE.md`.
+- Rust `eagle` crate: AGPL-3.0-or-later, declared in `eagle/Cargo.toml`.
+- Rust `lqs` and `cookbook` crates: GPL-3.0-or-later, declared in their manifests.
 
 ## Citation
 

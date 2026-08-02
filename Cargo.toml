@@ -13,10 +13,9 @@
 # git-rev (no sibling layout required) — see the root README "Dependencies"
 # section for the standalone clone + build steps.
 #
-# Python-side tools (tools/*.py + tools/*.sh) work standalone — they
-# install the lamquant-codec wheel from LamQuant-Lossless via pip and
-# read evidence JSON from a local `evidence/` directory (populated by
-# running the benches against a real EEG corpus).
+# Python-side tools (tools/*.py + tools/*.sh) work standalone. Benchmark and
+# Rust-parity dependencies are explicit Python extras; tools read evidence JSON
+# from a local `evidence/` directory populated against a real EEG corpus.
 [workspace]
 resolver = "2"
 # `eagle`  — LamQuant test orchestrator
