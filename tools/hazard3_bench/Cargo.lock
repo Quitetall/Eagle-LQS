@@ -5,7 +5,7 @@ version = 4
 [[package]]
 name = "abir"
 version = "0.1.0"
-source = "git+https://github.com/Quitetall/ABIR.git?rev=a8f0251891c07570e373230a8fed89264147e096#a8f0251891c07570e373230a8fed89264147e096"
+source = "git+https://github.com/Quitetall/ABIR.git?rev=f1cfbcb649cc4f602ffedfd4d6820e49f45a1140#f1cfbcb649cc4f602ffedfd4d6820e49f45a1140"
 dependencies = [
  "blake3",
  "serde_json",
@@ -14,7 +14,7 @@ dependencies = [
 [[package]]
 name = "abir-bcs"
 version = "0.1.0"
-source = "git+https://github.com/Quitetall/ABIR.git?rev=a8f0251891c07570e373230a8fed89264147e096#a8f0251891c07570e373230a8fed89264147e096"
+source = "git+https://github.com/Quitetall/ABIR.git?rev=f1cfbcb649cc4f602ffedfd4d6820e49f45a1140#f1cfbcb649cc4f602ffedfd4d6820e49f45a1140"
 dependencies = [
  "abir",
  "blake3",
@@ -85,16 +85,6 @@ dependencies = [
 name = "blut-graph-core"
 version = "0.1.0-alpha.1"
 source = "git+https://github.com/Quitetall/blut.git?rev=adb6a874f7047670f6c3ae0d5603acac5ffeeb11#adb6a874f7047670f6c3ae0d5603acac5ffeeb11"
-dependencies = [
- "blake3",
- "postcard",
- "serde",
-]
-
-[[package]]
-name = "blut-graph-core"
-version = "0.1.0-alpha.1"
-source = "git+https://github.com/Quitetall/blut.git?rev=c2464ae63c1cfbb282e207393a81ec2921e6be69#c2464ae63c1cfbb282e207393a81ec2921e6be69"
 dependencies = [
  "blake3",
  "postcard",
@@ -341,7 +331,7 @@ checksum = "8f42a60cbdf9a97f5d2305f08a87dc4e09308d1276d28c869c684d7777685682"
 [[package]]
 name = "lamquant-abir-codec"
 version = "0.1.0"
-source = "git+https://github.com/Quitetall/LamQuant-Lossless.git?rev=6301f2e18a03aea7922af60a5f2b2af4ee153ddc#6301f2e18a03aea7922af60a5f2b2af4ee153ddc"
+source = "git+https://github.com/Quitetall/LamQuant-Lossless.git?rev=c55ae97f67ba22fc85b2746bd99206c9b5b57cfd#c55ae97f67ba22fc85b2746bd99206c9b5b57cfd"
 dependencies = [
  "abir",
  "abir-bcs",
@@ -353,7 +343,7 @@ dependencies = [
 [[package]]
 name = "lamquant-abir-montage"
 version = "0.1.0"
-source = "git+https://github.com/Quitetall/LamQuant-Lossless.git?rev=6301f2e18a03aea7922af60a5f2b2af4ee153ddc#6301f2e18a03aea7922af60a5f2b2af4ee153ddc"
+source = "git+https://github.com/Quitetall/LamQuant-Lossless.git?rev=c55ae97f67ba22fc85b2746bd99206c9b5b57cfd#c55ae97f67ba22fc85b2746bd99206c9b5b57cfd"
 dependencies = [
  "abir",
  "sha2",
@@ -362,12 +352,12 @@ dependencies = [
 [[package]]
 name = "lamquant-common"
 version = "0.1.3"
-source = "git+https://github.com/Quitetall/LamQuant-Lossless.git?rev=6301f2e18a03aea7922af60a5f2b2af4ee153ddc#6301f2e18a03aea7922af60a5f2b2af4ee153ddc"
+source = "git+https://github.com/Quitetall/LamQuant-Lossless.git?rev=c55ae97f67ba22fc85b2746bd99206c9b5b57cfd#c55ae97f67ba22fc85b2746bd99206c9b5b57cfd"
 
 [[package]]
 name = "lamquant-firmware"
 version = "0.1.0"
-source = "git+https://github.com/Quitetall/LamQuant-Firmware.git?rev=f1e65bb8dabd0d387879d155e3ccad2c24cf9fda#f1e65bb8dabd0d387879d155e3ccad2c24cf9fda"
+source = "git+https://github.com/Quitetall/LamQuant-Firmware.git?rev=2fad6ba8390d8403b5f3db7764a9539c3ad51676#2fad6ba8390d8403b5f3db7764a9539c3ad51676"
 dependencies = [
  "lamquant-firmware-common",
 ]
@@ -375,10 +365,10 @@ dependencies = [
 [[package]]
 name = "lamquant-firmware-common"
 version = "0.1.0"
-source = "git+https://github.com/Quitetall/LamQuant-Firmware.git?rev=f1e65bb8dabd0d387879d155e3ccad2c24cf9fda#f1e65bb8dabd0d387879d155e3ccad2c24cf9fda"
+source = "git+https://github.com/Quitetall/LamQuant-Firmware.git?rev=2fad6ba8390d8403b5f3db7764a9539c3ad51676#2fad6ba8390d8403b5f3db7764a9539c3ad51676"
 dependencies = [
  "blake3",
- "blut-graph-core 0.1.0-alpha.1 (git+https://github.com/Quitetall/blut.git?rev=adb6a874f7047670f6c3ae0d5603acac5ffeeb11)",
+ "blut-graph-core",
  "embedded-alloc",
  "heapless",
  "lamquant-ipc-types",
@@ -401,7 +391,7 @@ dependencies = [
 [[package]]
 name = "lamquant-lml-mcu"
 version = "0.9.3"
-source = "git+https://github.com/Quitetall/LamQuant-Lossless.git?rev=6301f2e18a03aea7922af60a5f2b2af4ee153ddc#6301f2e18a03aea7922af60a5f2b2af4ee153ddc"
+source = "git+https://github.com/Quitetall/LamQuant-Lossless.git?rev=c55ae97f67ba22fc85b2746bd99206c9b5b57cfd#c55ae97f67ba22fc85b2746bd99206c9b5b57cfd"
 dependencies = [
  "lamquant-common",
  "libm",
@@ -410,12 +400,12 @@ dependencies = [
 [[package]]
 name = "lamquant-nodes"
 version = "0.1.0"
-source = "git+https://github.com/Quitetall/LamQuant-Lossless.git?rev=6301f2e18a03aea7922af60a5f2b2af4ee153ddc#6301f2e18a03aea7922af60a5f2b2af4ee153ddc"
+source = "git+https://github.com/Quitetall/LamQuant-Lossless.git?rev=c55ae97f67ba22fc85b2746bd99206c9b5b57cfd#c55ae97f67ba22fc85b2746bd99206c9b5b57cfd"
 dependencies = [
  "abir",
  "abir-bcs",
  "blake3",
- "blut-graph-core 0.1.0-alpha.1 (git+https://github.com/Quitetall/blut.git?rev=c2464ae63c1cfbb282e207393a81ec2921e6be69)",
+ "blut-graph-core",
  "lamquant-abir-codec",
  "lamquant-lml-mcu",
 ]
@@ -423,7 +413,7 @@ dependencies = [
 [[package]]
 name = "lamquant-weights-firmware"
 version = "7.7.0"
-source = "git+https://github.com/Quitetall/LamQuant-Firmware.git?rev=f1e65bb8dabd0d387879d155e3ccad2c24cf9fda#f1e65bb8dabd0d387879d155e3ccad2c24cf9fda"
+source = "git+https://github.com/Quitetall/LamQuant-Firmware.git?rev=2fad6ba8390d8403b5f3db7764a9539c3ad51676#2fad6ba8390d8403b5f3db7764a9539c3ad51676"
 
 [[package]]
 name = "libc"
