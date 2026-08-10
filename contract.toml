@@ -1,0 +1,41 @@
+# Test obligations this repository satisfies, and how.
+#
+# The meta-repository declares WHAT must be true (tests/contracts/test-taxonomy.toml,
+# `obligations` per owner). This file declares HOW this repository proves it. The
+# validator (`tools/owner_contracts.py`) runs these commands here and observes the
+# result; it never learns this repository's test layout, so reorganising tests is
+# a local change that breaks nothing upstream.
+#
+# ADR 0092 invariant 5: owner-local tests exercise implementation; the meta
+# exercises public interfaces. This file is the seam between those two.
+
+schema_version = 1
+owner = "eagle-lqs"
+
+[obligation.owner-tests]
+description = """
+The Eagle/LQS Rust workspace: the LQS scoring crate, the eagle harness and the
+cookbook layer.
+"""
+argv = ["cargo", "test", "--workspace", "--no-fail-fast"]
+timeout_seconds = 1200
+
+# RATCHET, not a waiver. Measured 2026-08-10: 4 passed, 0 failed.
+#
+# Declared at 0 because 0 is what was measured. A ceiling above a green suite is
+# permission to regress, and the ratchet only means something when it is tight.
+#
+# Four is a small number for a repository this size, and that is worth saying out
+# loud rather than letting a green line imply depth. See scope_note.
+max_failures = 0
+
+# What this command does NOT cover. Printed by the validator on every run,
+# including passing ones — an obligation that answers `ok` while a whole tree
+# goes unasked reads as full coverage.
+scope_note = """
+The 17 Python test files here are not run: `pytest` fails to collect
+tests/validation (2 collection errors, an import-mode problem — 'No module named
+validation.test_moabb_concordance'). Those validation suites are also the ones a
+2026-08-10 audit found were running zero tests of their own while appearing to
+own coverage, so their status is debt, not depth. Tracked.
+"""
