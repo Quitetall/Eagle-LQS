@@ -22,7 +22,7 @@
 
 set -euo pipefail
 
-TREE="${1:-/mnt/4tb/data/Archive/edf/tuh_repair/tueg_v2.0.1/edf/000}"
+TREE="${1:-/mnt/4tb/data/corpora/edf/tuh_repair/tueg_v2.0.1/edf/000}"
 LABEL="$(basename "$TREE")"
 OUT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/outputs/paper"
 OUT_JSON="$OUT_DIR/gzip_baseline_${LABEL}.json"

@@ -19,7 +19,7 @@
 set -uo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-REPAIR_ROOT="/mnt/4tb/data/Archive/edf/tuh_repair"
+REPAIR_ROOT="/mnt/4tb/data/corpora/edf/tuh_repair"
 OUT_DIR="$REPO_ROOT/outputs/paper"
 mkdir -p "$OUT_DIR"
 

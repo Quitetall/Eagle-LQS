@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """CHB-MIT compression-ratio bench across the three LPC modes.
 
-Encodes every EDF under `/mnt/4tb/data/Archive/edf/physionet/chbmit/`
+Encodes every EDF under `/mnt/4tb/data/corpora/edf/physionet/chbmit/`
 once per LPC mode (`fixed`, `adaptive`, `anytime`), sums input and
 output bytes, reports CR per mode + headline best mode.
 
@@ -45,7 +45,7 @@ def _resolve_lml_bin():
         return pathlib.Path(_op)
     return REPO_ROOT / "target" / "release" / "lml"
 LML_BIN = _resolve_lml_bin()
-CHBMIT_ROOT = Path("/mnt/4tb/data/Archive/edf/physionet/chbmit")
+CHBMIT_ROOT = Path("/mnt/4tb/data/corpora/edf/physionet/chbmit")
 OUT_DIR = REPO_ROOT / "outputs" / "paper"
 LPC_MODES = ("fixed", "adaptive", "anytime")
 

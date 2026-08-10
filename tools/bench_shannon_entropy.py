@@ -36,12 +36,12 @@ broad cross-section without taking hours. Each file contributes
 
 Usage:
   python3 tools/bench_shannon_entropy.py \
-    --tree tuar:/mnt/4tb/data/Archive/edf/tuh_repair/tuar_v3.0.1 \
-    --tree tueg:/mnt/4tb/data/Archive/edf/tuh_repair/tueg_v2.0.1 \
+    --tree tuar:/mnt/4tb/data/corpora/edf/tuh_repair/tuar_v3.0.1 \
+    --tree tueg:/mnt/4tb/data/corpora/edf/tuh_repair/tueg_v2.0.1 \
     --files-per-corpus 200
 
   # or use --auto-tuh to enumerate all 7 TUH corpora under
-  # /mnt/4tb/data/Archive/edf/tuh_repair/ automatically.
+  # /mnt/4tb/data/corpora/edf/tuh_repair/ automatically.
 """
 from __future__ import annotations
 
@@ -61,7 +61,7 @@ import numpy as np
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 OUT_DIR = REPO_ROOT / "outputs" / "paper"
-TUH_REPAIR = Path("/mnt/4tb/data/Archive/edf/tuh_repair")
+TUH_REPAIR = Path("/mnt/4tb/data/corpora/edf/tuh_repair")
 RNG_SEED = 0x4C414D51  # 'LAMQ' — deterministic sampling
 
 # pyedflib is the EDF reader used elsewhere in the project; it
@@ -195,7 +195,7 @@ def main() -> int:
     )
     ap.add_argument(
         "--auto-tuh", action="store_true",
-        help="auto-enumerate all corpora under /mnt/4tb/data/Archive/"
+        help="auto-enumerate all corpora under /mnt/4tb/data/corpora/"
              "edf/tuh_repair/<corpus>_vX.Y.Z",
     )
     ap.add_argument(

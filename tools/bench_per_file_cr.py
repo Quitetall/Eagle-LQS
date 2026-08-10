@@ -27,7 +27,7 @@ recordings up to dozens:1 on low-noise segments).
 
 Usage:
   python3 tools/bench_per_file_cr.py \
-      --tree tueg-edf000:/mnt/4tb/data/Archive/edf/tuh_repair/\
+      --tree tueg-edf000:/mnt/4tb/data/corpora/edf/tuh_repair/\
 tueg_v2.0.1/edf/000 \
       --sample 0
 """

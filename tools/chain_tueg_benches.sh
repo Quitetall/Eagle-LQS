@@ -17,7 +17,7 @@
 set -u
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-TUEG_TREE="/mnt/4tb/data/Archive/edf/tuh_repair/tueg_v2.0.1"
+TUEG_TREE="/mnt/4tb/data/corpora/edf/tuh_repair/tueg_v2.0.1"
 TUEG_EDF000="$TUEG_TREE/edf/000"
 REPAIR_PID="${REPAIR_PID:-$(pgrep -f 'repair_lma_all.sh' | tail -1)}"
 

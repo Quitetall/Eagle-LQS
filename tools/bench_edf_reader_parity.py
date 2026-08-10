@@ -22,7 +22,7 @@ Output:
 
 Usage:
     python3 tools/bench_edf_reader_parity.py \
-        --tree /mnt/4tb/data/Archive/edf/tuh_repair/tueg_v2.0.1 \
+        --tree /mnt/4tb/data/corpora/edf/tuh_repair/tueg_v2.0.1 \
         --pyedflib-samples 500 --mne-samples 4000
 """
 from __future__ import annotations

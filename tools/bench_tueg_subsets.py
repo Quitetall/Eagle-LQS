@@ -13,7 +13,7 @@ suffix because that's the dimension most relevant for codec CR
 
 For a paper Appendix-A-friendly summary that also reports
 per-corpus numbers, point `--tree` at the parent
-`/mnt/4tb/data/Archive/edf/tuh_repair/` and aggregate across
+`/mnt/4tb/data/corpora/edf/tuh_repair/` and aggregate across
 each `<corpus>_v*` subtree.
 
 Output:
@@ -22,11 +22,11 @@ Output:
 
 Usage:
     python3 tools/bench_tueg_subsets.py \
-        --tree /mnt/4tb/data/Archive/edf/tuh_repair/tueg_v2.0.1
+        --tree /mnt/4tb/data/corpora/edf/tuh_repair/tueg_v2.0.1
 
     # Per-corpus mode (any tuh_repair subtree):
     python3 tools/bench_tueg_subsets.py \
-        --tree /mnt/4tb/data/Archive/edf/tuh_repair \
+        --tree /mnt/4tb/data/corpora/edf/tuh_repair \
         --group-by corpus
 """
 from __future__ import annotations
