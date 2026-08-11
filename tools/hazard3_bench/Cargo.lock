@@ -357,7 +357,7 @@ source = "git+https://github.com/Quitetall/LamQuant-Lossless.git?rev=ad62367a0c1
 [[package]]
 name = "lamquant-firmware"
 version = "0.1.0"
-source = "git+https://github.com/Quitetall/LamQuant-Firmware.git?rev=1d87bf8b9d634a2c16b4b29a75f0794f3dac3d61#1d87bf8b9d634a2c16b4b29a75f0794f3dac3d61"
+source = "git+https://github.com/Quitetall/LamQuant-Firmware.git?rev=dfb92dcfa3945c6ee2340f8aee03d1496928f5ff#dfb92dcfa3945c6ee2340f8aee03d1496928f5ff"
 dependencies = [
  "lamquant-firmware-common",
 ]
@@ -365,7 +365,7 @@ dependencies = [
 [[package]]
 name = "lamquant-firmware-common"
 version = "0.1.0"
-source = "git+https://github.com/Quitetall/LamQuant-Firmware.git?rev=1d87bf8b9d634a2c16b4b29a75f0794f3dac3d61#1d87bf8b9d634a2c16b4b29a75f0794f3dac3d61"
+source = "git+https://github.com/Quitetall/LamQuant-Firmware.git?rev=dfb92dcfa3945c6ee2340f8aee03d1496928f5ff#dfb92dcfa3945c6ee2340f8aee03d1496928f5ff"
 dependencies = [
  "blake3",
  "blut-graph-core",
@@ -413,7 +413,7 @@ dependencies = [
 [[package]]
 name = "lamquant-weights-firmware"
 version = "7.7.0"
-source = "git+https://github.com/Quitetall/LamQuant-Firmware.git?rev=1d87bf8b9d634a2c16b4b29a75f0794f3dac3d61#1d87bf8b9d634a2c16b4b29a75f0794f3dac3d61"
+source = "git+https://github.com/Quitetall/LamQuant-Firmware.git?rev=dfb92dcfa3945c6ee2340f8aee03d1496928f5ff#dfb92dcfa3945c6ee2340f8aee03d1496928f5ff"
 
 [[package]]
 name = "libc"
