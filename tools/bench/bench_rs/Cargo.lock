@@ -91,6 +91,16 @@ dependencies = [
 [[package]]
 name = "blut-graph-core"
 version = "0.1.0-alpha.1"
+source = "git+https://github.com/Quitetall/blut.git?rev=66fca71076082d899d992811f6f7b3bc0f195fd1#66fca71076082d899d992811f6f7b3bc0f195fd1"
+dependencies = [
+ "blake3",
+ "postcard",
+ "serde",
+]
+
+[[package]]
+name = "blut-graph-core"
+version = "0.1.0-alpha.1"
 source = "git+https://github.com/Quitetall/blut.git?rev=e198b68e4e959af89261d73d1e3c36b93832bff6#e198b68e4e959af89261d73d1e3c36b93832bff6"
 dependencies = [
  "blake3",
@@ -347,7 +357,7 @@ source = "git+https://github.com/Quitetall/LamQuant-Lossless.git?rev=31f26b29a6b
 [[package]]
 name = "lamquant-firmware"
 version = "0.1.0"
-source = "git+https://github.com/Quitetall/LamQuant-Firmware.git?rev=1d71f6fa56c23b6cf539508f9699f237ce861294#1d71f6fa56c23b6cf539508f9699f237ce861294"
+source = "git+https://github.com/Quitetall/LamQuant-Firmware.git?rev=133f5327e4e844dc677ede0901e73e2f6179c768#133f5327e4e844dc677ede0901e73e2f6179c768"
 dependencies = [
  "lamquant-firmware-common",
 ]
@@ -355,10 +365,10 @@ dependencies = [
 [[package]]
 name = "lamquant-firmware-common"
 version = "0.1.0"
-source = "git+https://github.com/Quitetall/LamQuant-Firmware.git?rev=1d71f6fa56c23b6cf539508f9699f237ce861294#1d71f6fa56c23b6cf539508f9699f237ce861294"
+source = "git+https://github.com/Quitetall/LamQuant-Firmware.git?rev=133f5327e4e844dc677ede0901e73e2f6179c768#133f5327e4e844dc677ede0901e73e2f6179c768"
 dependencies = [
  "blake3",
- "blut-graph-core",
+ "blut-graph-core 0.1.0-alpha.1 (git+https://github.com/Quitetall/blut.git?rev=66fca71076082d899d992811f6f7b3bc0f195fd1)",
  "embedded-alloc",
  "heapless",
  "lamquant-ipc-types",
@@ -395,7 +405,7 @@ dependencies = [
  "abir",
  "abir-bcs",
  "blake3",
- "blut-graph-core",
+ "blut-graph-core 0.1.0-alpha.1 (git+https://github.com/Quitetall/blut.git?rev=e198b68e4e959af89261d73d1e3c36b93832bff6)",
  "lamquant-abir-codec",
  "lamquant-lml-mcu",
 ]
@@ -403,7 +413,7 @@ dependencies = [
 [[package]]
 name = "lamquant-weights-firmware"
 version = "7.7.0"
-source = "git+https://github.com/Quitetall/LamQuant-Firmware.git?rev=1d71f6fa56c23b6cf539508f9699f237ce861294#1d71f6fa56c23b6cf539508f9699f237ce861294"
+source = "git+https://github.com/Quitetall/LamQuant-Firmware.git?rev=133f5327e4e844dc677ede0901e73e2f6179c768#133f5327e4e844dc677ede0901e73e2f6179c768"
 
 [[package]]
 name = "libc"

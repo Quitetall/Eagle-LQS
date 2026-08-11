@@ -15,7 +15,7 @@ name = "blut-eagle"
 path = "src/main.rs"
 
 [dependencies]
-blut = { git = "https://github.com/Quitetall/blut.git", rev = "66fca71076082d899d992811f6f7b3bc0f195fd1", default-features = false }
+blut = { git = "https://github.com/Quitetall/blut.git", rev = "c514d63638ae95779b77c7c59e395bd45b06b633", default-features = false }
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
