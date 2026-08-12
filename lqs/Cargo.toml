@@ -7,4 +7,4 @@ description = "LamQuant Quality Suite — LamQuant's internal EEG codec test sui
 repository = "https://github.com/Quitetall/Eagle-LQS"
 
 [dependencies]
-open-eeg-codec-standard = "0.9"
+open-eeg-codec-standard = { workspace = true }

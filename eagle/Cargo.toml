@@ -16,4 +16,4 @@ path = "src/bin/eagle.rs"
 
 [dependencies]
 # OpenECS — vendor-neutral EEG codec grading standard.
-open-eeg-codec-standard = "0.9"
+open-eeg-codec-standard = { workspace = true }
