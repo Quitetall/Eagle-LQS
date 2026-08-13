@@ -292,7 +292,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "hazard3_bench"
+name = "eagle-lqs-hazard3-bench"
 version = "0.0.0"
 dependencies = [
  "embedded-alloc",
