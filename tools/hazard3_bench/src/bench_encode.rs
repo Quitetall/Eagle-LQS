@@ -56,8 +56,10 @@ use core::sync::atomic::{compiler_fence, Ordering};
 
 use embedded_alloc::LlffHeap as Heap;
 use lamquant_firmware::dsp::biquad::{NUM_CHANNELS, WINDOW_SAMPLES};
+use lamquant_firmware::pipeline::{
+    CodecMode, CompleteWindow, FirmwarePipeline, StageReadiness, TransportFrame, TransportSink,
+};
 use lamquant_firmware::safety::SafetyState;
-use lamquant_firmware::scheduler::{CodecMode, PipelineScheduler};
 use panic_halt as _;
 
 // ─── Hazard3 testbench MMIO (matches common/tb_cxxrtl_io.h) ─────────────────
@@ -138,6 +140,30 @@ fn xorshift32(s: &mut u32) -> u32 {
     x
 }
 
+type Window = [[i32; WINDOW_SAMPLES]; NUM_CHANNELS];
+
+/// Fill pipeline-owned acquisition storage outside measured encode brackets.
+unsafe fn fill_window(ptr: *mut Window, seed0: u32) {
+    let signal = &mut *ptr;
+    let mut seed = seed0;
+    for channel in signal {
+        for sample in channel {
+            let value = xorshift32(&mut seed) as i32;
+            *sample = (value >> 11) & 0x000F_FFFF;
+        }
+    }
+}
+
+struct DiscardSink;
+
+impl TransportSink for DiscardSink {
+    type Error = core::convert::Infallible;
+
+    fn send(&mut self, _frame: TransportFrame<'_>) -> Result<(), Self::Error> {
+        Ok(())
+    }
+}
+
 // ─── Global allocator (codec uses transient Vec in entropy stage) ──────────
 #[global_allocator]
 static HEAP: Heap = Heap::empty();
@@ -148,14 +174,9 @@ static mut HEAP_MEM: [MaybeUninit<u8>; HEAP_SIZE] = [MaybeUninit::uninit(); HEAP
 
 // ─── Pipeline + signal state (BSS-resident, sized once at link time) ───────
 #[link_section = ".bss"]
-static mut PIPELINE: MaybeUninit<PipelineScheduler> = MaybeUninit::uninit();
+static mut PIPELINE: MaybeUninit<FirmwarePipeline> = MaybeUninit::uninit();
 #[link_section = ".bss"]
 static mut SAFETY: MaybeUninit<SafetyState> = MaybeUninit::uninit();
-#[link_section = ".bss"]
-static mut SIGNAL_A: [[i32; WINDOW_SAMPLES]; NUM_CHANNELS] = [[0; WINDOW_SAMPLES]; NUM_CHANNELS];
-#[link_section = ".bss"]
-static mut SIGNAL_B: [[i32; WINDOW_SAMPLES]; NUM_CHANNELS] = [[0; WINDOW_SAMPLES]; NUM_CHANNELS];
-static ACTIVITY_MAP: [[u8; 79]; 8] = [[0; 79]; 8];
 
 const ITERS: u32 = 8;
 const CORE_CLOCK_MHZ: u64 = 150;
@@ -171,38 +192,21 @@ fn main() -> ! {
         asm!("csrci mcountinhibit, 0x5", options(nomem, nostack));
     }
 
+    let pipeline_ptr = addr_of_mut!(PIPELINE).cast::<FirmwarePipeline>();
+    let safety_ptr = addr_of_mut!(SAFETY).cast::<SafetyState>();
     unsafe {
         HEAP.init(addr_of_mut!(HEAP_MEM) as usize, HEAP_SIZE);
-        PIPELINE.write(PipelineScheduler::new());
-        SAFETY.write(SafetyState::default());
-        (*SAFETY.as_mut_ptr()).init(0);
+        FirmwarePipeline::init_in_place(pipeline_ptr);
+        SafetyState::init_in_place(safety_ptr);
+        (*safety_ptr).init(0);
     }
 
-    let pipeline: &mut PipelineScheduler = unsafe { &mut *PIPELINE.as_mut_ptr() };
-    let safety: &mut SafetyState = unsafe { &mut *SAFETY.as_mut_ptr() };
+    let pipeline: &mut FirmwarePipeline = unsafe { &mut *pipeline_ptr };
+    let safety: &mut SafetyState = unsafe { &mut *safety_ptr };
     pipeline.set_codec_mode(CodecMode::Lossless);
-
-    // Pre-fill two windows with deterministic xorshift noise BEFORE
-    // the timed bracket so the encoder sees varying input on each
-    // iteration (no warm-cache convergence on a single fixed input)
-    // without paying the per-iteration fill cost in the cycle count.
-    // Q31-scaled to ~20 effective bits (matches AFE dynamic range for
-    // benign EEG).
-    let signal_a: &mut [[i32; WINDOW_SAMPLES]; NUM_CHANNELS] =
-        unsafe { &mut *addr_of_mut!(SIGNAL_A) };
-    let signal_b: &mut [[i32; WINDOW_SAMPLES]; NUM_CHANNELS] =
-        unsafe { &mut *addr_of_mut!(SIGNAL_B) };
-    let mut seed: u32 = 0xCAFE_BABE;
-    let fill = |sig: &mut [[i32; WINDOW_SAMPLES]; NUM_CHANNELS], s: &mut u32| {
-        for ch in 0..NUM_CHANNELS {
-            for t in 0..WINDOW_SAMPLES {
-                let v = xorshift32(s) as i32;
-                sig[ch][t] = (v >> 11) & 0x000F_FFFF;
-            }
-        }
-    };
-    fill(signal_a, &mut seed);
-    fill(signal_b, &mut seed);
+    pipeline.boot(StageReadiness::all_ready()).unwrap();
+    let signal: *mut Window = unsafe { addr_of_mut!((*pipeline_ptr).lpc.residual) };
+    let mut sink = DiscardSink;
 
     tb_puts("=== LamQuant lossless encoder cycle bench ===\n");
     tb_puts("target=Hazard3 RV32IMACZba_Zbb_Zbkb_Zbs (RP2350 silicon config)\n");
@@ -211,28 +215,32 @@ fn main() -> ! {
     tb_put_u32(ITERS);
     tb_puts("\n");
 
-    // Warm-up — cache lines / allocator. NOT included in the timed
-    // region. Touches both buffers so both are L1-warm before bracket.
-    let _ = pipeline.encode_window(signal_a, &ACTIVITY_MAP, 0, safety, 0);
-    let _ = pipeline.encode_window(signal_b, &ACTIVITY_MAP, 0, safety, 0);
+    // Warm-up — cache lines / allocator. Input fill remains outside measured
+    // region so reported cycles cover typed pipeline processing only.
+    unsafe { fill_window(signal, 0xCAFE_BABE) };
+    let warmup = pipeline
+        .process_window(CompleteWindow::new(0), safety, &mut sink, 0)
+        .unwrap();
+    core::hint::black_box(&warmup);
 
-    let c0 = read_mcycle64();
-    let i0 = read_minstret64();
-    compiler_fence(Ordering::SeqCst);
-
+    let mut cycles_total = 0u64;
+    let mut instrs_total = 0u64;
     for i in 0..ITERS {
-        let sig = if i & 1 == 0 { &mut *signal_a } else { &mut *signal_b };
-        let r = pipeline.encode_window(sig, &ACTIVITY_MAP, 0, safety, 0);
-        // Defeat LTO so the encode_window call is not folded away.
+        unsafe { fill_window(signal, 0xCAFE_BABE ^ i.wrapping_mul(0x9E37_79B9)) };
+        compiler_fence(Ordering::SeqCst);
+        let c0 = read_mcycle64();
+        let i0 = read_minstret64();
+        compiler_fence(Ordering::SeqCst);
+        let r = pipeline
+            .process_window(CompleteWindow::new(i + 1), safety, &mut sink, 0)
+            .unwrap();
+        compiler_fence(Ordering::SeqCst);
+        let i1 = read_minstret64();
+        let c1 = read_mcycle64();
+        cycles_total += c1 - c0;
+        instrs_total += i1 - i0;
         core::hint::black_box(&r);
     }
-
-    compiler_fence(Ordering::SeqCst);
-    let c1 = read_mcycle64();
-    let i1 = read_minstret64();
-
-    let cycles_total = c1 - c0;
-    let instrs_total = i1 - i0;
     let cycles_per_window = (cycles_total / ITERS as u64) as u32;
     let instrs_per_window = (instrs_total / ITERS as u64) as u32;
     let cpi_x1000 = ((cycles_total.saturating_mul(1000)) / instrs_total.max(1)) as u32;
