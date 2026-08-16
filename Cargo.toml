@@ -24,4 +24,4 @@ members = ["eagle", "lqs"]
 
 [workspace.dependencies]
 # Exact owner revision required by ADR 0092 A17 source convergence.
-open-eeg-codec-standard = { git = "https://github.com/Quitetall/OpenECS.git", rev = "15aae29f81d36ddd81b59a451867ca88af591a23" }
+open-eeg-codec-standard = { git = "https://github.com/Quitetall/OpenECS.git", rev = "3b613a8ab8f6ffcaa3606ab8cc4308cd84f306b4" }
