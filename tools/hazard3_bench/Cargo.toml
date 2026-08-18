@@ -17,7 +17,7 @@ doctest = false
 bench = false
 
 [dependencies]
-lamquant-firmware = { git = "https://github.com/Quitetall/LamQuant-Firmware.git", rev = "ebd5488653c0040a511b2aa89635c39e76006d70", default-features = false, features = ["lossless-only"] }
+lamquant-firmware = { git = "https://github.com/Quitetall/LamQuant-Firmware.git", rev = "2ff72b5df6b7ed7d9d5d7107fd41855ab148930d", default-features = false, features = ["lossless-only"] }
 embedded-alloc = "0.6"
 
 [target.riscv32imac-unknown-none-elf.dependencies]

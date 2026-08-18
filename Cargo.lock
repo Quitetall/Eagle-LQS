@@ -5,7 +5,7 @@ version = 4
 [[package]]
 name = "abir"
 version = "0.1.0"
-source = "git+https://github.com/Quitetall/ABIR.git?rev=974af90df978b5330c304eec79a2b368d83d7e85#974af90df978b5330c304eec79a2b368d83d7e85"
+source = "git+https://github.com/Quitetall/ABIR.git?rev=83fb2a82f5cbcfefc8328d7842b50e16174ff37a#83fb2a82f5cbcfefc8328d7842b50e16174ff37a"
 dependencies = [
  "blake3",
  "serde_json",
@@ -581,7 +581,7 @@ checksum = "384b8ab6d37215f3c5301a95a4accb5d64aa607f1fcb26a11b5303878451b4fe"
 [[package]]
 name = "open-eeg-codec-standard"
 version = "0.9.2"
-source = "git+https://github.com/Quitetall/OpenECS.git?rev=328b49867e2a848b7a13e245cbcee4d91434dd7f#328b49867e2a848b7a13e245cbcee4d91434dd7f"
+source = "git+https://github.com/Quitetall/OpenECS.git?rev=da852bcd49f09243b438617182d749a0e2f3b836#da852bcd49f09243b438617182d749a0e2f3b836"
 dependencies = [
  "abir",
  "clap",
