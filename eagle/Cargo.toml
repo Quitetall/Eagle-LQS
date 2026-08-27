@@ -4,7 +4,7 @@ version = "0.1.1"
 edition = "2021"
 license = "AGPL-3.0-or-later"
 description = "Eagle — LamQuant's validation suite. LQS compliance, benchmarks, clinical tasks."
-repository = "https://github.com/Quitetall/Eagle"
+repository = "https://github.com/Quitetall/Eagle-LQS"
 
 [lib]
 name = "eagle"

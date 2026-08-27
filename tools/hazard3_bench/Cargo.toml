@@ -17,7 +17,7 @@ doctest = false
 bench = false
 
 [dependencies]
-lamquant-firmware = { path = "../../../../tools/crate-reservations/lamquant-firmware", default-features = false, features = ["lossless-only"] }
+lamquant-firmware = { path = "../../../../firmware/lamquant-firmware", default-features = false, features = ["lossless-only"] }
 embedded-alloc = "0.6"
 
 [target.riscv32imac-unknown-none-elf.dependencies]
