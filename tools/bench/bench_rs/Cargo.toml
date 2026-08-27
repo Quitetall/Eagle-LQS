@@ -16,7 +16,7 @@ debug = false
 panic = "abort"
 
 [dependencies]
-lamquant-firmware = { git = "https://github.com/Quitetall/LamQuant-Firmware.git", rev = "94dbb772ca4189dc814cb2837d2113833d16ad34", default-features = false }
+lamquant-firmware = { path = "../../../../../tools/crate-reservations/lamquant-firmware", default-features = false }
 
 # Standalone host workspace — do NOT inherit the embedded target.
 [workspace]
